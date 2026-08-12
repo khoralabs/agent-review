@@ -1,0 +1,42 @@
+{
+  "name": "@khoralabs/agent-review",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "prepare": "husky",
+    "cli": "bun run ./src/cli.ts",
+    "cli:review": "bun run ./src/cli.ts review",
+    "cli:analyze": "bun run ./src/cli.ts analyze",
+    "cli:log": "bun run ./src/cli.ts log",
+    "cli:migrate": "bun run ./src/cli.ts migrate",
+    "cli:commit-message": "bun run ./src/cli.ts commit-message",
+    "cli:status": "bun run ./src/cli.ts status",
+    "cli:walk": "bun run ./src/cli.ts walk",
+    "test": "bun test ./src",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "format": "biome check --write .",
+    "format:check": "biome check --error-on-warnings .",
+    "lint": "biome check --error-on-warnings ."
+  },
+  "dependencies": {
+    "@khoralabs/agent-capabilities": "^0.2.0",
+    "@khoralabs/agent-capabilities-ai-sdk": "^0.2.0",
+    "@khoralabs/agent-capabilities-otel": "^0.2.0",
+    "@opentelemetry/api": "^1.9.1",
+    "ai": "^7.0.9",
+    "just-bash": "^3.2.0",
+    "pino": "^9",
+    "yaml": "^2.8.0",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.0",
+    "@types/bun": "latest",
+    "husky": "^9.1.7",
+    "typescript": "^5"
+  }
+}
