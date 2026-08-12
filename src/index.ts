@@ -20,8 +20,11 @@ export {
   type CliOverrides,
   DEFAULT_CONFIG,
   loadConfigFile,
+  type ModelConfig,
+  modelsFor,
   type ParsedCliArgs,
   parseArgs,
+  parseModelConfig,
   resolveConfig,
 } from "./config.ts";
 export {

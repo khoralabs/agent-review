@@ -69,9 +69,9 @@ bun run --filter @khoralabs/agent-review status -- --min-severity warning
    Spec guidance: [../commit-message/SKILL.md](../commit-message/SKILL.md).
 
 5. **Re-enter via the hook.** The commit-msg hook runs `run` again. That is the
-   next review — do **not** set `SKIP_AGENT_REVIEW=1` on the final commit. After
-   the hook finishes (success or fail), call `status` again and continue from
-   step 2.
+   next review — do **not** set `"skip": true` in `.agent-review.json` on the
+   final commit. After the hook finishes (success or fail), call `status`
+   again and continue from step 2.
 
 ## Rules
 

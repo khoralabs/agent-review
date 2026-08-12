@@ -4,8 +4,14 @@ import type { DiffScope } from "./lib/git.ts";
 import { DEFAULT_OUTPUT_DIR } from "./lib/observability.ts";
 import type { FindingSeverity } from "./schema/index.ts";
 
+export type ModelConfig = {
+  review: string;
+  analyze: string;
+  commitMessage: string;
+};
+
 export type AgentReviewConfig = {
-  model: string;
+  model: ModelConfig;
   skills: string[];
   skillsDirs: string[];
   blockOn: FindingSeverity[];
@@ -16,10 +22,18 @@ export type AgentReviewConfig = {
   analystConcurrency: number;
   /** Attach same-HEAD prior runs as prompt context (default off). */
   includeWorkstream: boolean;
+  /** Skip review pipeline commands (exit 0). */
+  skip: boolean;
 };
 
+const DEFAULT_MODEL_ID = "google/gemini-3.5-flash";
+
+export function modelsFor(id: string): ModelConfig {
+  return { review: id, analyze: id, commitMessage: id };
+}
+
 export const DEFAULT_CONFIG: AgentReviewConfig = {
-  model: "google/gemini-3.5-flash",
+  model: modelsFor(DEFAULT_MODEL_ID),
   skills: ["./skills/agent-review/code-review"],
   skillsDirs: [".agents/skills"],
   blockOn: ["error"],
@@ -28,8 +42,10 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   outputDir: DEFAULT_OUTPUT_DIR,
   analystConcurrency: 4,
   includeWorkstream: false,
+  skip: false,
 };
 
+const MODEL_PURPOSE_KEYS = ["review", "analyze", "commitMessage"] as const;
 const SCOPES = new Set<DiffScope>(["staged", "unstaged", "working", "range", "commit", "stdin"]);
 const SEVERITIES = new Set<FindingSeverity>(["error", "warning", "info"]);
 
@@ -51,6 +67,7 @@ export type CliOverrides = {
   commit?: string;
   skills?: string[];
   skillsDirs?: string[];
+  /** Single gateway id; when set, applies to all model purposes. */
   model?: string;
   outputDir?: string;
   cwd?: string;
@@ -135,6 +152,35 @@ function parsePositiveInt(value: unknown, label: string): number {
   return value;
 }
 
+function parseModelId(value: unknown, label: string): string {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    throw new Error(`${label} must be a non-empty string`);
+  }
+  return value.trim();
+}
+
+/** Parse config `model`: string (all purposes) or object keyed by purpose. */
+export function parseModelConfig(value: unknown): ModelConfig {
+  if (typeof value === "string") {
+    return modelsFor(parseModelId(value, "model"));
+  }
+  if (!isRecord(value)) {
+    throw new Error("model must be a non-empty string or an object");
+  }
+  const out: ModelConfig = { ...DEFAULT_CONFIG.model };
+  for (const key of Object.keys(value)) {
+    if (!MODEL_PURPOSE_KEYS.includes(key as (typeof MODEL_PURPOSE_KEYS)[number])) {
+      throw new Error(`model unknown key "${key}"; expected ${MODEL_PURPOSE_KEYS.join(", ")}`);
+    }
+  }
+  for (const key of MODEL_PURPOSE_KEYS) {
+    if (value[key] !== undefined) {
+      out[key] = parseModelId(value[key], `model.${key}`);
+    }
+  }
+  return out;
+}
+
 export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
   if (!fs.existsSync(configPath)) {
     throw new Error(`config file not found: ${configPath}`);
@@ -144,10 +190,7 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
 
   const partial: Partial<AgentReviewConfig> = {};
   if (raw.model !== undefined) {
-    if (typeof raw.model !== "string" || raw.model.trim().length === 0) {
-      throw new Error("model must be a non-empty string");
-    }
-    partial.model = raw.model.trim();
+    partial.model = parseModelConfig(raw.model);
   }
   if (raw.skills !== undefined) partial.skills = parseStringArray(raw.skills, "skills");
   if (raw.skillsDirs !== undefined) {
@@ -182,6 +225,12 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     }
     partial.includeWorkstream = raw.includeWorkstream;
   }
+  if (raw.skip !== undefined) {
+    if (typeof raw.skip !== "boolean") {
+      throw new Error("skip must be a boolean");
+    }
+    partial.skip = raw.skip;
+  }
   return partial;
 }
 
@@ -194,16 +243,25 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
     filePartial = loadConfigFile(configPath);
   }
 
-  const envModel = process.env.AGENT_REVIEW_MODEL?.trim();
-
   let scope = overrides.scope ?? filePartial.defaultScope ?? DEFAULT_CONFIG.defaultScope;
   // --commit without --scope implies commit scope
   if (overrides.commit !== undefined && overrides.scope === undefined) {
     scope = "commit";
   }
 
+  const cliModel = overrides.model?.trim();
+  const envModel = process.env.AGENT_REVIEW_MODEL?.trim();
+  const model =
+    cliModel && cliModel.length > 0
+      ? modelsFor(cliModel)
+      : envModel && envModel.length > 0
+        ? modelsFor(envModel)
+        : (filePartial.model ?? DEFAULT_CONFIG.model);
+
+  const envSkip = process.env.SKIP_AGENT_REVIEW?.trim() === "1";
+
   return {
-    model: overrides.model?.trim() || envModel || filePartial.model || DEFAULT_CONFIG.model,
+    model,
     skills: overrides.skills ?? filePartial.skills ?? DEFAULT_CONFIG.skills,
     skillsDirs: overrides.skillsDirs ?? filePartial.skillsDirs ?? DEFAULT_CONFIG.skillsDirs,
     blockOn: filePartial.blockOn ?? DEFAULT_CONFIG.blockOn,
@@ -218,6 +276,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       overrides.includeWorkstream ??
       filePartial.includeWorkstream ??
       DEFAULT_CONFIG.includeWorkstream,
+    skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }
 
@@ -244,6 +303,7 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
   for (let i = start; i < argv.length; i++) {
     const arg = argv[i];
     if (arg === undefined) continue;
+    if (arg === "--") continue;
     if (arg === "--help" || arg === "-h") {
       out.help = true;
       continue;

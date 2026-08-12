@@ -1,0 +1,12 @@
+{
+  "model": "google/gemini-3.5-flash",
+  "skills": ["./skills/agent-review/code-review"],
+  "skillsDirs": [".agents/skills"],
+  "blockOn": ["error"],
+  "maxDiffBytes": 200000,
+  "defaultScope": "staged",
+  "outputDir": ".data/agent-review",
+  "analystConcurrency": 4,
+  "includeWorkstream": false,
+  "skip": false
+}

@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+set -e
+cd "$(git rev-parse --show-toplevel)"
+bun --env-file=.env ./src/cli.ts run --scope staged --include-workstream --message-file "$1"

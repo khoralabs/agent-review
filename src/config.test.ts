@@ -1,6 +1,9 @@
 import { describe, expect, test } from "bun:test";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 
-import { parseArgs, resolveConfig } from "./config.ts";
+import { loadConfigFile, modelsFor, parseArgs, parseModelConfig, resolveConfig } from "./config.ts";
 
 describe("parseArgs / resolveConfig", () => {
   test("parses scope and skills flags", () => {
@@ -95,6 +98,8 @@ describe("parseArgs / resolveConfig", () => {
     expect(cfg.blockOn).toEqual(["error"]);
     expect(cfg.skills.length).toBeGreaterThan(0);
     expect(cfg.analystConcurrency).toBe(4);
+    expect(cfg.model).toEqual(modelsFor("google/gemini-3.5-flash"));
+    expect(cfg.skip).toBe(false);
   });
 
   test("parses --analyst-concurrency", () => {
@@ -124,5 +129,90 @@ describe("parseArgs / resolveConfig", () => {
       cwd: "/tmp/does-not-exist-agent-review",
     });
     expect(cfg.includeWorkstream).toBe(true);
+  });
+
+  test("parseModelConfig accepts string and partial object", () => {
+    expect(parseModelConfig("acme/one")).toEqual(modelsFor("acme/one"));
+    expect(parseModelConfig({ analyze: "acme/analyst" })).toEqual({
+      review: "google/gemini-3.5-flash",
+      analyze: "acme/analyst",
+      commitMessage: "google/gemini-3.5-flash",
+    });
+    expect(() => parseModelConfig({ review: "" })).toThrow(/model\.review/);
+    expect(() => parseModelConfig({ weird: "x" })).toThrow(/unknown key/);
+  });
+
+  test("resolveConfig loads string model and skip from file", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({ model: "vendor/shared", skip: true }),
+    );
+    const cfg = resolveConfig({ cwd: dir });
+    expect(cfg.model).toEqual(modelsFor("vendor/shared"));
+    expect(cfg.skip).toBe(true);
+  });
+
+  test("resolveConfig loads object model; --model overrides all", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({
+        model: {
+          review: "vendor/review",
+          analyze: "vendor/analyze",
+        },
+      }),
+    );
+    const fromFile = resolveConfig({ cwd: dir });
+    expect(fromFile.model).toEqual({
+      review: "vendor/review",
+      analyze: "vendor/analyze",
+      commitMessage: "google/gemini-3.5-flash",
+    });
+
+    const args = parseArgs(["review", "--model", "cli/override"]);
+    const overridden = resolveConfig({ ...args, cwd: dir });
+    expect(overridden.model).toEqual(modelsFor("cli/override"));
+  });
+
+  test("loadConfigFile rejects invalid skip", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    const configPath = path.join(dir, ".agent-review.json");
+    fs.writeFileSync(configPath, JSON.stringify({ skip: "yes" }));
+    expect(() => loadConfigFile(configPath)).toThrow(/skip must be a boolean/);
+  });
+
+  test("parseArgs ignores bare -- separators", () => {
+    const args = parseArgs(["status", "--", "--run-id", "abc", "--json"]);
+    expect(args.command).toBe("status");
+    expect(args.runId).toBe("abc");
+    expect(args.json).toBe(true);
+  });
+
+  test("AGENT_REVIEW_MODEL and SKIP_AGENT_REVIEW env overrides", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({ model: "vendor/file", skip: false }),
+    );
+
+    const prevModel = process.env.AGENT_REVIEW_MODEL;
+    const prevSkip = process.env.SKIP_AGENT_REVIEW;
+    try {
+      process.env.AGENT_REVIEW_MODEL = "vendor/env";
+      process.env.SKIP_AGENT_REVIEW = "1";
+      const cfg = resolveConfig({ cwd: dir });
+      expect(cfg.model).toEqual(modelsFor("vendor/env"));
+      expect(cfg.skip).toBe(true);
+
+      const cliWins = resolveConfig({ cwd: dir, model: "vendor/cli" });
+      expect(cliWins.model).toEqual(modelsFor("vendor/cli"));
+    } finally {
+      if (prevModel === undefined) delete process.env.AGENT_REVIEW_MODEL;
+      else process.env.AGENT_REVIEW_MODEL = prevModel;
+      if (prevSkip === undefined) delete process.env.SKIP_AGENT_REVIEW;
+      else process.env.SKIP_AGENT_REVIEW = prevSkip;
+    }
   });
 });

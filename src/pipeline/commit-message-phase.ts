@@ -66,7 +66,7 @@ export async function runCommitMessagePhase(
     const generated = await runCommitMessageAgent({
       cwd,
       runId: "commit-message",
-      modelId: input.config.model,
+      modelId: input.config.model.commitMessage,
       diff,
       skillSystem: skills.system,
       generateTextFn: input.generateTextFn,

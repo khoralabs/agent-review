@@ -100,9 +100,20 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 
 ## Requirements
 
-- `AI_GATEWAY_API_KEY` — Vercel AI Gateway (required for `run` / `review` / `analyze` / `commit-message` / `walk`)
-- Optional `AGENT_REVIEW_MODEL` — override model id
-- `SKIP_AGENT_REVIEW=1` — skip (exit 0) for review pipeline commands (`status` / `log` / `migrate` / `commit-message` are not skipped)
+- `AI_GATEWAY_API_KEY` — Vercel AI Gateway (required for `run` / `review` / `analyze` / `commit-message` / `walk`). Copy [`.env.example`](./.env.example) to `.env`.
+- Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (after config file, before CLI `--model`)
+- Optional `SKIP_AGENT_REVIEW=1` — skip `run` / `review` / `analyze` / `walk` without editing tracked config (overrides `skip` in `.agent-review.json`)
+
+## Husky hooks
+
+- **`pre-commit`** — Biome (`bun run format:check`); blocks on warnings or errors.
+- **`commit-msg`** — full review pipeline on the staged diff:
+
+```sh
+bun --env-file=.env ./src/cli.ts run --scope staged --include-workstream --message-file "$1"
+```
+
+Requires `.env` with `AI_GATEWAY_API_KEY` and a repo-root [`.agent-review.json`](./.agent-review.json) (see Config).
 
 ## Artifacts
 
@@ -125,28 +136,38 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 
 ## Operator skill (Cursor / Claude Code)
 
-Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) (remediation, commit-message, and loop sub-skills). Install:
+Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) (remediation, commit-message, loop, history-walk, and code-review sub-skills).
+
+This repo already links it for coding agents:
 
 ```sh
 mkdir -p .agents/skills
-ln -s ../../packages/agent-review/skills/agent-review .agents/skills/agent-review
+ln -s ../../skills/agent-review .agents/skills/agent-review
 ```
 
-(From the `agent-network` repo root; adjust the relative link if your checkout layout differs.)
+Consumers of the package should use the same relative layout from their repo root (or point the symlink at the installed package’s `skills/agent-review`).
 
 This skill is for **coding agents** operating the CLI — not for the review agent’s activated `skills` list in `.agent-review.json`. Activated review skill remains `skills/agent-review/code-review`. History walks use the operator sub-skill [`skills/agent-review/history-walk`](./skills/agent-review/history-walk/SKILL.md).
 
 ## Config
 
-Repo root `.agent-review.json`:
+Repo root [`.agent-review.json`](./.agent-review.json). Start from the packaged example:
 
+```sh
+cp .agent-review.example.json .agent-review.json
+```
+
+Fields:
+
+- `model` — gateway model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
+- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass so a tracked `skip: true` is not committed. Env wins over config.
 - `skills` — skill directories to **activate** for the review, analyst, and commit-message agents (tier 2 bodies)
 - `skillsDirs` — roots to **discover** for the catalog (tier 1)
 - `blockOn` — severity **threshold**: listed severities and **more severe** can exit `1` when the analyst verdict is `remediate` (default `["error"]`)
 - `defaultScope` — `staged` \| `unstaged` \| `working` \| `range` \| `commit` \| `stdin`
 - `outputDir` — artifact directory (default `.data/agent-review`)
 - `analystConcurrency` — max parallel analyst triage sessions (default `4`)
-- `includeWorkstream` — when `true`, attach prior same-HEAD runs (findings, remediations, diffs) to review and analyze prompts (default `false`; CLI: `--include-workstream`)
+- `includeWorkstream` — when `true`, attach prior same-HEAD runs (findings, remediations, diffs) to review and analyze prompts (default `false`; CLI: `--include-workstream`; the commit-msg hook always passes `--include-workstream`)
 - `--no-emit` — CLI-only; skip writing pipeline artifacts (`run` still reviews then analyzes in-process)
 
 ## Exit codes

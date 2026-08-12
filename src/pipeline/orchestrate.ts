@@ -73,7 +73,7 @@ export function artifactFromReview(input: {
     summary: review.result?.summary ?? "",
     findings: review.result?.findings ?? [],
     files: diff?.files ?? [],
-    model: config.model,
+    model: config.model.review,
     diff: diff?.diff,
     commitMessage: review.commitMessage,
     truncated: diff?.truncated,

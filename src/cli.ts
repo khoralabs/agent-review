@@ -49,7 +49,7 @@ Options:
   --head <ref>              default HEAD for range
   --skills path,path        skill dirs to activate (tier 2)
   --skills-dirs path,path   discovery roots for catalog (tier 1)
-  --model <gateway-id>
+  --model <gateway-id>      override all agents for this invocation
   --output-dir <path>       default .data/agent-review (use a separate dir for walk)
   --analyst-concurrency <n> max parallel analyst sessions (default 4)
   --include-workstream      attach prior same-HEAD review/remediation context
@@ -58,9 +58,14 @@ Options:
   -h, --help
 
 Env:
-  AI_GATEWAY_API_KEY   required for run/review/analyze/commit-message/walk
-  AGENT_REVIEW_MODEL   optional model override
-  SKIP_AGENT_REVIEW=1  exit 0 without reviewing (run/review/analyze/walk)
+  AI_GATEWAY_API_KEY     required for run/review/analyze/commit-message/walk
+  AGENT_REVIEW_MODEL     optional; override all agent models for this process
+  SKIP_AGENT_REVIEW=1    optional; skip run/review/analyze/walk (overrides config.skip)
+
+Config (.agent-review.json):
+  model   string for all agents, or { review, analyze, commitMessage }
+  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message)
+          Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
 Artifacts (repo-root-relative paths):
   <output-dir>/reviews/<YYYYMMDDTHHMMSSZ>-<shortSha>/run.json
@@ -193,30 +198,7 @@ function runLogCommand(overrides: ParsedCliArgs, config: AgentReviewConfig, cwd:
   }
 }
 
-function firstNonFlagArg(argv: string[]): string | undefined {
-  for (const arg of argv) {
-    if (arg === "--") continue;
-    if (arg.startsWith("-")) continue;
-    return arg;
-  }
-  return undefined;
-}
-
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
-  // Skip before parseArgs so unknown/legacy flags still exit 0.
-  // `log` / `migrate` / `commit-message` / `status` are exempt (hook skip is for review).
-  const first = firstNonFlagArg(argv);
-  if (
-    process.env.SKIP_AGENT_REVIEW?.trim() === "1" &&
-    first !== "log" &&
-    first !== "migrate" &&
-    first !== "commit-message" &&
-    first !== "status"
-  ) {
-    console.error("agent-review: skipped (SKIP_AGENT_REVIEW=1)");
-    return 0;
-  }
-
   let overrides: ParsedCliArgs;
   try {
     overrides = parseArgs(argv);
@@ -238,6 +220,20 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
   } catch (err) {
     console.error(err instanceof Error ? err.message : String(err));
     return 2;
+  }
+
+  // `log` / `migrate` / `commit-message` / `status` are exempt (skip is for review pipeline).
+  if (
+    config.skip &&
+    overrides.command !== "log" &&
+    overrides.command !== "migrate" &&
+    overrides.command !== "commit-message" &&
+    overrides.command !== "status"
+  ) {
+    const via =
+      process.env.SKIP_AGENT_REVIEW?.trim() === "1" ? "SKIP_AGENT_REVIEW=1" : "config.skip=true";
+    console.error(`agent-review: skipped (${via})`);
+    return 0;
   }
 
   if (overrides.command === "log") {

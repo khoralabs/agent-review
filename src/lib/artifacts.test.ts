@@ -153,8 +153,9 @@ describe("persistReviewArtifacts", () => {
       path: string;
     };
     expect(row.key).toBe("unstable-fallback");
-    expect(onDisk.findings[0]?.fingerprint).toBeDefined();
-    expect(row.fingerprint).toBe(onDisk.findings[0]?.fingerprint);
+    const findingFingerprint = onDisk.findings[0]?.fingerprint;
+    expect(findingFingerprint).toBeTruthy();
+    expect(row.fingerprint).toBe(findingFingerprint as string);
     expect(row.gitHead).toBe("ffffffffffffffffffffffffffffffffffffffff");
     expect(row.staticHash).toBe("static-1");
     expect(row.path).toBe("reviews/run-f/run.json");
