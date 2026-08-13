@@ -1,7 +1,7 @@
 ---
 name: agent-review
 description: >-
-  Operate Bloom @khoralabs/agent-review from a coding agent: run review/analyze,
+  Operate @khoralabs/agent-review from a coding agent: run review/analyze,
   implement remediations from plan.md, draft Conventional Commits messages,
   loop remediate → commit → re-review until blocking findings are gone, or
   walk a git commit range to catalog historical findings.

@@ -134,7 +134,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
     : createReviewObservability({
         outputDir,
         runId,
-        serviceName: "bloom-agent-review",
+        serviceName: "agent-review",
       });
 
   const state: MutableState = {

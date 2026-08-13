@@ -39,7 +39,7 @@ export function createReviewObservability(opts: {
   const telemetryPath = path.join(outputDir, "telemetry.jsonl");
   const fd = openSync(telemetryPath, "a");
 
-  const serviceName = opts.serviceName ?? "bloom-agent-review";
+  const serviceName = opts.serviceName ?? "agent-review";
   const logger = pino(
     {
       level: "debug",

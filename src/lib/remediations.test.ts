@@ -13,7 +13,7 @@ describe("remediations helpers", () => {
       runId: "run1",
       findingIndex: 0,
       invocationHash: "abcdef0123456789",
-      agentId: "bloom-agent-review-analyst",
+      agentId: "agent-review-analyst",
       finding: {
         severity: "error",
         key: "test-issue",

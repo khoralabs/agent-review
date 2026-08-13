@@ -1,7 +1,7 @@
 ---
 name: remediation
 description: >-
-  Explains Bloom agent-review remediations: how review/analyze produce
+  Explains agent-review remediations: how review/analyze produce
   reviews/<runId>/remediations/<index>/plan.md, how to reason about and implement a
   remediation, which artifacts to leave in that directory, and how to append
   progress with the agent-review log CLI (work-log.jsonl). Use when fixing

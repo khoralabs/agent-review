@@ -4,7 +4,7 @@ import { commitMessageToolkit } from "../tools/_toolkit.ts";
 import { CONVENTIONAL_COMMITS_SPEC } from "./conventional-commits.ts";
 import type { AgentDefinition } from "./types.ts";
 
-export const COMMIT_MESSAGE_AGENT_ID = "bloom-agent-review-commit-message";
+export const COMMIT_MESSAGE_AGENT_ID = "agent-review-commit-message";
 
 export type CommitMessageAgentDefinition = AgentDefinition;
 
@@ -21,7 +21,7 @@ const COMMIT_MESSAGE_INSTRUCTIONS = [
 export async function defineCommitMessageAgent(): Promise<CommitMessageAgentDefinition> {
   const { staticHash, agent } = await createRegisteredAgent({
     agentId: COMMIT_MESSAGE_AGENT_ID,
-    name: "Bloom Agent Review Commit Message",
+    name: "Agent Review Commit Message",
     instructions: [CONVENTIONAL_COMMITS_SPEC, ...COMMIT_MESSAGE_INSTRUCTIONS],
     context: { role: "agent-review-commit-message" },
     rootComposable: commitMessageToolkit,

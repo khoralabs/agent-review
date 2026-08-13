@@ -87,7 +87,7 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
     : createReviewObservability({
         outputDir,
         runId,
-        serviceName: "bloom-agent-review-analyst",
+        serviceName: "agent-review-analyst",
       });
 
   let agent: RegisteredAgent | undefined;

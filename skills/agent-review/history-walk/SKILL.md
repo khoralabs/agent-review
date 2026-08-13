@@ -1,7 +1,7 @@
 ---
 name: history-walk
 description: >-
-  Walk git history with Bloom agent-review: review each commit from→to in
+  Walk git history with agent-review: review each commit from→to in
   parallel, catalog findings by host fingerprint, and read resolved vs
   unresolved remediations. Use for postmortems or mining review value across
   a commit range.

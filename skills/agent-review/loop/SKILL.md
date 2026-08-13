@@ -1,7 +1,7 @@
 ---
 name: loop
 description: >-
-  Loop remediate → commit → re-review with Bloom agent-review until status is
+  Loop remediate → commit → re-review with agent-review until status is
   clean at the configured severity threshold. Use after a blocked commit or
   when clearing remediations under .data/agent-review/.
 ---

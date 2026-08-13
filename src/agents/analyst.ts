@@ -6,7 +6,7 @@ import ASD_STE100 from "./asd-ste100.ts";
 import { CONVENTIONAL_COMMITS_SPEC } from "./conventional-commits.ts";
 import type { AgentDefinition } from "./types.ts";
 
-export const ANALYST_AGENT_ID = "bloom-agent-review-analyst";
+export const ANALYST_AGENT_ID = "agent-review-analyst";
 
 export type AnalystAgentDefinition = AgentDefinition;
 
@@ -25,7 +25,7 @@ const ANALYST_INSTRUCTIONS = [
 export async function defineAnalystAgent(): Promise<AnalystAgentDefinition> {
   const { staticHash, agent } = await createRegisteredAgent({
     agentId: ANALYST_AGENT_ID,
-    name: "Bloom Agent Review Analyst",
+    name: "Agent Review Analyst",
     instructions: [ASD_STE100, CONVENTIONAL_COMMITS_SPEC, ...ANALYST_INSTRUCTIONS],
     context: { role: "agent-review-analyst" },
     rootComposable: reviewToolkit,
