@@ -4,7 +4,6 @@
     "analyze": "google/gemini-3.5-flash",
     "commitMessage": "google/gemini-3.5-flash-lite"
   },
-  "skills": ["./skills/agent-review/code-review"],
   "skillsDirs": [".agents/skills"],
   "blockOn": ["error"],
   "maxDiffBytes": 200000,

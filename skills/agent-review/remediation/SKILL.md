@@ -37,7 +37,7 @@ Load [references/layout.md](references/layout.md) if you need the full directory
 
 ## How to pick up a remediation
 
-1. Prefer `bun run --filter @khoralabs/agent-review status` (or `--json`) to list
+1. Prefer `bunx agent-review status` (or `--json`) to list
    blocking remediations for the latest (or `--run-id`) run.
 2. Open `plan.md` in the remediation directory.
 3. Read **Context**, **Why remediate**, and **Steps**.
@@ -72,34 +72,34 @@ Append JSONL entries with the package `log` command (no `AI_GATEWAY_API_KEY` req
 
 ```sh
 # Start work
-bun run --filter @khoralabs/agent-review log -- \
+bunx agent-review log \
   --remediation <runId>/<index> \
   --event started \
   --message "Picked up remediation" \
   --agent cursor
 
 # Progress note
-bun run --filter @khoralabs/agent-review log -- \
+bunx agent-review log \
   --remediation <runId>/<index> \
   --event note \
   --message "Root cause: missing telemetry.linkCapture after capabilities refactor"
 
 # Record an artifact you added under the remediation dir
-bun run --filter @khoralabs/agent-review log -- \
+bunx agent-review log \
   --remediation reviews/<runId>/remediations/<index> \
   --event artifact \
   --path investigation.md \
   --message "Wrote investigation notes"
 
 # Status update
-bun run --filter @khoralabs/agent-review log -- \
+bunx agent-review log \
   --remediation <runId>/<index> \
   --event status \
   --status in_progress \
   --message "Implementing fix"
 
 # Complete
-bun run --filter @khoralabs/agent-review log -- \
+bunx agent-review log \
   --remediation <runId>/<index> \
   --event done \
   --message "Fix landed; confirmation checks passed"

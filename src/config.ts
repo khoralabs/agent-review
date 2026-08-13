@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import type { DiffScope } from "./lib/git.ts";
 import { DEFAULT_OUTPUT_DIR } from "./lib/observability.ts";
+import { packagedCodeReviewSkillPath } from "./lib/package-root.ts";
 import type { FindingSeverity } from "./schema/index.ts";
 
 export type ModelConfig = {
@@ -34,7 +35,7 @@ export function modelsFor(id: string): ModelConfig {
 
 export const DEFAULT_CONFIG: AgentReviewConfig = {
   model: modelsFor(DEFAULT_MODEL_ID),
-  skills: ["./skills/agent-review/code-review"],
+  skills: [packagedCodeReviewSkillPath()],
   skillsDirs: [".agents/skills"],
   blockOn: ["error"],
   maxDiffBytes: 200_000,
@@ -57,7 +58,8 @@ export type CliCommand =
   | "migrate"
   | "commit-message"
   | "status"
-  | "walk";
+  | "walk"
+  | "init";
 
 export type CliOverrides = {
   configPath?: string;
@@ -98,6 +100,8 @@ export type CliOverrides = {
   maxCommits?: number;
   /** walk: leave detached worktrees after finish. */
   keepWorktree?: boolean;
+  /** init: overwrite existing files. */
+  force?: boolean;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -290,6 +294,7 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     "commit-message",
     "status",
     "walk",
+    "init",
   ]);
   let command: CliCommand = "run";
   let start = 0;
@@ -350,6 +355,8 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
       out.maxCommits = n;
     } else if (arg === "--keep-worktree") {
       out.keepWorktree = true;
+    } else if (arg === "--force") {
+      out.force = true;
     } else if (arg === "--include-workstream") {
       out.includeWorkstream = true;
     } else if (arg === "--no-emit") {

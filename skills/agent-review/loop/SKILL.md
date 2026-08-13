@@ -16,7 +16,7 @@ auto-fixer.
 Stop when:
 
 ```sh
-bun run --filter @khoralabs/agent-review status
+bunx agent-review status
 ```
 
 exits `0` (no blocking remediations at the threshold), **or** a remediation
@@ -27,7 +27,7 @@ user.
 Default threshold = config `blockOn` and more severe. Override:
 
 ```sh
-bun run --filter @khoralabs/agent-review status -- --min-severity warning
+bunx agent-review status --min-severity warning
 ```
 
 ## Steps
@@ -36,7 +36,7 @@ bun run --filter @khoralabs/agent-review status -- --min-severity warning
    `commit-msg` run:
 
    ```sh
-   bun run --filter @khoralabs/agent-review run -- \
+   bunx agent-review run \
      --scope staged --include-workstream
    ```
 
@@ -47,8 +47,8 @@ bun run --filter @khoralabs/agent-review status -- --min-severity warning
 2. **Inspect blockers.**
 
    ```sh
-   bun run --filter @khoralabs/agent-review status
-   # or: bun run --filter @khoralabs/agent-review status -- --json
+   bunx agent-review status
+   # or: bunx agent-review status --json
    ```
 
    Exit `0` → done. Exit `1` → implement each listed remediation. Exit `2` →
@@ -61,7 +61,7 @@ bun run --filter @khoralabs/agent-review status -- --min-severity warning
 4. **Commit.** Stage your changes, draft a message, commit:
 
    ```sh
-   bun run --filter @khoralabs/agent-review commit-message
+   bunx agent-review commit-message
    # copy stdout into:
    git commit -m "$(…message…)"
    ```

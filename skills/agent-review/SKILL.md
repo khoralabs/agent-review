@@ -24,8 +24,8 @@ read-only; you implement fixes and commit.
 
 ## CLI map
 
-From the `agent-network` repo root (`AI_GATEWAY_API_KEY` required except `log` /
-`status` / `migrate`):
+From the repo root (`AI_GATEWAY_API_KEY` required except `log` / `status` /
+`migrate` / `init`):
 
 | Command | Purpose |
 |---------|---------|
@@ -37,20 +37,20 @@ From the `agent-network` repo root (`AI_GATEWAY_API_KEY` required except `log` /
 | `log` | Append remediation `work-log.jsonl` |
 | `commit-message` | Draft Conventional Commits message (stdout) |
 | `migrate` | Legacy layout → `reviews/` |
+| `init` | Scaffold config, husky hook, operator skill |
 
 ```sh
-bun run --filter @khoralabs/agent-review run -- --scope staged --include-workstream
-bun run --filter @khoralabs/agent-review status
-bun run --filter @khoralabs/agent-review status -- --json
-bun run --filter @khoralabs/agent-review commit-message
-bun run --filter @khoralabs/agent-review log -- --remediation <runId>/<index> --event done --message "…"
-bun run --filter @khoralabs/agent-review walk -- \
-  --from <rev> --output-dir .data/agent-review-walks
+bunx agent-review run --scope staged --include-workstream
+bunx agent-review status
+bunx agent-review status --json
+bunx agent-review commit-message
+bunx agent-review log --remediation <runId>/<index> --event done --message "…"
+bunx agent-review walk --from <rev> --output-dir .data/agent-review-walks
 ```
 
 Default stop threshold matches config `blockOn` **and more severe** (e.g.
 `blockOn: ["warning"]` treats `error` and `warning` as blocking). Override with
-`status -- --min-severity warning`.
+`status --min-severity warning`.
 
 ## Sub-skills (load as needed)
 

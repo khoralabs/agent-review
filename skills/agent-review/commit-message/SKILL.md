@@ -3,7 +3,7 @@ name: commit-message
 description: >-
   Conventional Commits 1.0.0 and the agent-review commit-message CLI. Use when
   drafting or checking a commit message, choosing type/scope/breaking-change
-  markers, or running bun run --filter @khoralabs/agent-review commit-message.
+  markers, or running bunx agent-review commit-message.
 ---
 
 # Commit messages (agent-review)
@@ -11,7 +11,7 @@ description: >-
 Draft with the CLI (message on stdout; does not commit):
 
 ```sh
-bun run --filter @khoralabs/agent-review commit-message
+bunx agent-review commit-message
 # optional: --scope staged|unstaged|working|commit
 ```
 

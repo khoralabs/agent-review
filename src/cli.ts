@@ -1,4 +1,5 @@
 import { type AgentReviewConfig, type ParsedCliArgs, parseArgs, resolveConfig } from "./config.ts";
+import { runInit } from "./lib/init.ts";
 import { migrateAgentReviewLayout } from "./lib/migrate-layout.ts";
 import { resolveOutputDir } from "./lib/observability.ts";
 import {
@@ -15,19 +16,21 @@ import { runStatusPhase } from "./pipeline/status-phase.ts";
 import { runWalkPhase } from "./pipeline/walk-phase.ts";
 
 function printHelp(): void {
-  console.log(`Usage: bun run --filter @khoralabs/agent-review <command> -- [options]
+  console.log(`Usage: agent-review <command> [options]
 
 Commands:
-  run       Orchestrate review then analyze (default; used by hooks)
-  review    Collect diff + review agent; print runId on stdout
-  analyze   Triage findings for --run-id <id> from a prior review
-  status    Show blocking remediations for a run (default: latest; no LLM)
-  walk      Review each commit in from..to; catalog + dedupe findings
+  init           Scaffold .agent-review.json, husky commit-msg, and operator skill
+  run            Orchestrate review then analyze (default; used by hooks)
+  review         Collect diff + review agent; print runId on stdout
+  analyze        Triage findings for --run-id <id> from a prior review
+  status         Show blocking remediations for a run (default: latest; no LLM)
+  walk           Review each commit in from..to; catalog + dedupe findings
   log            Append a JSONL work-log entry under a remediation directory
   migrate        Convert legacy runs/ + remediations/ into reviews/<runId>/
   commit-message Draft a Conventional Commits message for the current diff
 
 Options:
+  --force                   init: overwrite existing config/hook/skill
   --run-id <id>             analyze / status (status defaults to latest)
   --remediation <id|path>   required for log (<runId>/<index> or reviews/…)
   --event <name>            log: started|note|artifact|status|done
@@ -47,7 +50,7 @@ Options:
   --message-file <path>     read commit message from file (commit-msg hook $1)
   --base <ref>              required for --scope range
   --head <ref>              default HEAD for range
-  --skills path,path        skill dirs to activate (tier 2)
+  --skills path,path        skill dirs to activate (tier 2; default: packaged code-review)
   --skills-dirs path,path   discovery roots for catalog (tier 1)
   --model <gateway-id>      override all agents for this invocation
   --output-dir <path>       default .data/agent-review (use a separate dir for walk)
@@ -64,7 +67,7 @@ Env:
 
 Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
-  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message)
+  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
 Artifacts (repo-root-relative paths):
@@ -222,18 +225,32 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 2;
   }
 
-  // `log` / `migrate` / `commit-message` / `status` are exempt (skip is for review pipeline).
+  // `log` / `migrate` / `commit-message` / `status` / `init` are exempt (skip is for review pipeline).
   if (
     config.skip &&
     overrides.command !== "log" &&
     overrides.command !== "migrate" &&
     overrides.command !== "commit-message" &&
-    overrides.command !== "status"
+    overrides.command !== "status" &&
+    overrides.command !== "init"
   ) {
     const via =
       process.env.SKIP_AGENT_REVIEW?.trim() === "1" ? "SKIP_AGENT_REVIEW=1" : "config.skip=true";
     console.error(`agent-review: skipped (${via})`);
     return 0;
+  }
+
+  if (overrides.command === "init") {
+    try {
+      const result = runInit({ cwd, force: overrides.force === true });
+      for (const line of result.messages) {
+        console.error(line.length > 0 ? `agent-review: init: ${line}` : "");
+      }
+      return 0;
+    } catch (err) {
+      console.error(err instanceof Error ? err.message : String(err));
+      return 2;
+    }
   }
 
   if (overrides.command === "log") {

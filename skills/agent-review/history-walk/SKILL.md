@@ -26,7 +26,7 @@ Prefer a **separate** `--output-dir` so walk artifacts do not interleave with
 hook reviews:
 
 ```sh
-bun run --filter @khoralabs/agent-review walk -- \
+bunx agent-review walk \
   --from <rev> \
   --to HEAD \
   --output-dir .data/agent-review-walks \

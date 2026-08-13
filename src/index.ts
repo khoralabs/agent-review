@@ -79,6 +79,11 @@ export {
   gitArgsForScope,
 } from "./lib/git.ts";
 export {
+  type InitOptions,
+  type InitResult,
+  runInit,
+} from "./lib/init.ts";
+export {
   type MigrateLayoutResult,
   migrateAgentReviewLayout,
 } from "./lib/migrate-layout.ts";
@@ -88,6 +93,12 @@ export {
   type ReviewObservability,
   resolveOutputDir,
 } from "./lib/observability.ts";
+export {
+  packagedCodeReviewSkillPath,
+  packagedExampleConfigPath,
+  packagedOperatorSkillPath,
+  resolvePackageRoot,
+} from "./lib/package-root.ts";
 export {
   AGENTS_DIRNAME,
   agentSnapshotLegacyPath,

@@ -2,25 +2,62 @@
   "name": "@khoralabs/agent-review",
   "version": "0.0.0",
   "private": true,
+  "description": "Capabilities-based adversarial code review and analyst triage CLI for git diffs.",
+  "license": "MIT",
   "type": "module",
+  "engines": {
+    "bun": ">=1.1.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/khoralabs/agent-review.git"
+  },
+  "homepage": "https://github.com/khoralabs/agent-review#readme",
+  "bugs": "https://github.com/khoralabs/agent-review/issues",
+  "keywords": [
+    "agent",
+    "code-review",
+    "cli",
+    "git",
+    "capabilities",
+    "bun"
+  ],
+  "bin": {
+    "agent-review": "./bin/agent-review"
+  },
+  "files": [
+    "bin",
+    "src",
+    "skills",
+    ".agent-review.example.json",
+    "README.md",
+    "LICENSE"
+  ],
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./package.json": "./package.json",
+    "./skills/*": "./skills/*"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "scripts": {
-    "prepare": "husky",
-    "cli": "bun run ./src/cli.ts",
-    "cli:review": "bun run ./src/cli.ts review",
-    "cli:analyze": "bun run ./src/cli.ts analyze",
-    "cli:log": "bun run ./src/cli.ts log",
-    "cli:migrate": "bun run ./src/cli.ts migrate",
-    "cli:commit-message": "bun run ./src/cli.ts commit-message",
-    "cli:status": "bun run ./src/cli.ts status",
-    "cli:walk": "bun run ./src/cli.ts walk",
-    "test": "bun test ./src",
+    "prepare": "node ./scripts/prepare.mjs",
+    "cli": "bun run ./bin/agent-review",
+    "cli:review": "bun run ./bin/agent-review review",
+    "cli:analyze": "bun run ./bin/agent-review analyze",
+    "cli:log": "bun run ./bin/agent-review log",
+    "cli:migrate": "bun run ./bin/agent-review migrate",
+    "cli:commit-message": "bun run ./bin/agent-review commit-message",
+    "cli:status": "bun run ./bin/agent-review status",
+    "cli:walk": "bun run ./bin/agent-review walk",
+    "cli:init": "bun run ./bin/agent-review init",
+    "test": "bun test ./src ./scripts",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "format": "biome check --write .",
     "format:check": "biome check --error-on-warnings .",
-    "lint": "biome check --error-on-warnings ."
+    "lint": "biome check --error-on-warnings .",
+    "stage-release": "bun run scripts/stage-release.ts"
   },
   "dependencies": {
     "@khoralabs/agent-capabilities": "^0.2.0",
