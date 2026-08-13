@@ -14,6 +14,7 @@ import {
 } from "../lib/artifacts.ts";
 import { exitCodeForFindings, formatFindingsTable } from "../lib/findings.ts";
 import type { CollectedDiff } from "../lib/git.ts";
+import { loadInstructionsPrompt } from "../lib/instructions.ts";
 import { createReviewObservability, resolveOutputDir } from "../lib/observability.ts";
 import { logStatus } from "../lib/status.ts";
 import { loadWorkstreamPrompt } from "../lib/workstream.ts";
@@ -142,6 +143,15 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
         logStatus(quiet, error);
         return finalize();
       }
+      const instructions = await loadInstructionsPrompt(input.config, cwd);
+      if (instructions.error !== undefined) {
+        exitCode = 2;
+        error = instructions.error;
+        result = { summary, findings };
+        message = error;
+        logStatus(quiet, error);
+        return finalize();
+      }
       const workstreamContext =
         input.config.includeWorkstream === true
           ? loadWorkstreamPrompt({ outputDir, runId })
@@ -158,6 +168,7 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
         ...(commitMessage !== undefined ? { commitMessage } : {}),
         ...(workstreamContext !== undefined ? { workstreamContext } : {}),
         ...(skills.system.length > 0 ? { skillSystem: skills.system } : {}),
+        ...(instructions.system.length > 0 ? { instructionsSystem: instructions.system } : {}),
         pipelineHooks: telemetry?.pipelineHooks,
         generateTextFn: input.generateTextFn,
         testModel: input.generateTextFn !== undefined,

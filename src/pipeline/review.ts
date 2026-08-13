@@ -17,6 +17,8 @@ export type RunReviewAgentInput = {
   commitMessage?: string;
   discoveredSkills: SkillRecord[];
   activatedSkills: SkillRecord[];
+  /** Formatted custom instructions from config. */
+  instructionsSystem?: string;
   pipelineHooks?: ToolPipelineHooks;
   generateTextFn?: typeof generateText;
   testModel?: boolean;
@@ -36,7 +38,12 @@ export async function runReviewAgent(input: RunReviewAgentInput): Promise<RunRev
   const defined = await defineReviewAgent();
   await ensureAgentRegistered(defined.agent);
 
-  const system = formatSkillSystem(input.discoveredSkills, input.activatedSkills);
+  const system = [
+    formatSkillSystem(input.discoveredSkills, input.activatedSkills),
+    input.instructionsSystem ?? "",
+  ]
+    .filter((part) => part.trim().length > 0)
+    .join("\n\n");
 
   const fileList =
     input.diff.files.length > 0

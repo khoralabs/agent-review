@@ -1050,6 +1050,56 @@ description: Conventional Commits 1.0.0 for planning and commit messages.
     expect(onSystem).toContain("conventional-commits");
     expect(onSystem).toContain("MUST use type feat or fix");
   });
+
+  test("includes config instructions in analyst system", async () => {
+    const dir = makeTmp("agent-review-instr-an-");
+    fs.mkdirSync(path.join(dir, "docs"), { recursive: true });
+    fs.writeFileSync(path.join(dir, "docs", "style.md"), "CUSTOM_INSTRUCTION_MARKER\n");
+    writeRunArtifact({
+      cwd: dir,
+      outputDir: dir,
+      runId: "20260811T120000Z-abc1234",
+      scope: "staged",
+      exitCode: 0,
+      result: {
+        summary: "still issues",
+        findings: [
+          {
+            severity: "error",
+            key: "test-issue",
+            file: "src/a.ts",
+            message: "still broken",
+          },
+        ],
+      },
+      files: ["src/a.ts"],
+      model: "test",
+      diff: "diff --git a/src/a.ts b/src/a.ts\n+retry",
+      diagnostics: [],
+    });
+
+    let system = "";
+    await runAnalyzePhase({
+      config: {
+        ...DEFAULT_CONFIG,
+        skills: [],
+        skillsDirs: [],
+        instructions: ["Prefer short plans.", "docs/style.md"],
+        outputDir: dir,
+      },
+      runId: "20260811T120000Z-abc1234",
+      cwd: dir,
+      generateTextFn: (async (args: { system?: string }) => {
+        system = args.system ?? "";
+        return {
+          output: { verdict: "ignore", rationale: "already fixed" },
+        };
+      }) as never,
+    });
+    expect(system).toContain("# Custom instructions");
+    expect(system).toContain("Prefer short plans.");
+    expect(system).toContain("CUSTOM_INSTRUCTION_MARKER");
+  });
 });
 
 describe("orchestrateViaCli", () => {

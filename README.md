@@ -186,6 +186,7 @@ Fields:
 - `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.
 - `skillsDirs` — roots to **discover** for the catalog (tier 1); typically `.agents/skills`
+- `instructions` — extra system text for review / analyze / commit-message: literal strings and/or cwd-relative paths/globs to `.md` / `.txt` files (expanded with Bun.Glob). Example: `["Prefer citing tests.", "docs/review-style.md", ".agents/instructions/**/*.txt"]`
 - `blockOn` — severity **threshold**: listed severities and **more severe** can exit `1` when the analyst verdict is `remediate` (default `["error"]`)
 - `defaultScope` — `staged` \| `unstaged` \| `working` \| `range` \| `commit` \| `stdin`
 - `outputDir` — artifact directory (default `.data/agent-review`)

@@ -4,6 +4,7 @@ import type { generateText, LanguageModel } from "ai";
 import { defineCommitMessageAgent, ensureAgentRegistered } from "../agents/index.ts";
 import { capabilitiesGenerateText, resolveGatewayModel } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
+import { joinSystemParts } from "../lib/instructions.ts";
 import { type CommitMessageOutput, commitMessageOutputSchema } from "../schema/index.ts";
 
 export type RunCommitMessageAgentInput = {
@@ -12,6 +13,8 @@ export type RunCommitMessageAgentInput = {
   modelId: string;
   diff: CollectedDiff;
   skillSystem: string;
+  /** Formatted custom instructions from config. */
+  instructionsSystem?: string;
   pipelineHooks?: ToolPipelineHooks;
   generateTextFn?: typeof generateText;
   testModel?: boolean;
@@ -59,7 +62,7 @@ export async function runCommitMessageAgent(
     pipelineHooks: input.pipelineHooks,
     runId: input.runId,
     model,
-    system: input.skillSystem,
+    system: joinSystemParts(input.skillSystem, input.instructionsSystem),
     prompt,
     outputSchema: commitMessageOutputSchema,
     generateTextFn: input.generateTextFn,

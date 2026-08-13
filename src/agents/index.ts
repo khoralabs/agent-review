@@ -3,7 +3,6 @@ export {
   type AnalystAgentDefinition,
   defineAnalystAgent,
 } from "./analyst.ts";
-export { default as ASD_STE100 } from "./asd-ste100.ts";
 export {
   COMMIT_MESSAGE_AGENT_ID,
   type CommitMessageAgentDefinition,

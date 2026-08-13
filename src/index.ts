@@ -2,7 +2,6 @@ export {
   type AgentDefinition,
   ANALYST_AGENT_ID,
   type AnalystAgentDefinition,
-  ASD_STE100,
   COMMIT_MESSAGE_AGENT_ID,
   CONVENTIONAL_COMMITS_SPEC,
   type CommitMessageAgentDefinition,
@@ -83,6 +82,13 @@ export {
   type InitResult,
   runInit,
 } from "./lib/init.ts";
+export {
+  type InstructionDiagnostic,
+  isLiteralInstruction,
+  joinSystemParts,
+  type LoadInstructionsPromptResult,
+  loadInstructionsPrompt,
+} from "./lib/instructions.ts";
 export {
   type MigrateLayoutResult,
   migrateAgentReviewLayout,

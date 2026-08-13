@@ -15,6 +15,7 @@ import {
 import { resolveCommitMessage } from "../lib/commit-message.ts";
 import { formatFindingsTable } from "../lib/findings.ts";
 import { type CollectedDiff, collectDiff, type DiffScope } from "../lib/git.ts";
+import { loadInstructionsPrompt } from "../lib/instructions.ts";
 import { createReviewObservability, resolveOutputDir } from "../lib/observability.ts";
 import {
   formatReviewRunId,
@@ -184,6 +185,21 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       return finalize({ appendIndex: true });
     }
 
+    const instructions = await loadInstructionsPrompt(input.config, cwd);
+    diagnostics.push(
+      ...instructions.diagnostics.map((d) => ({
+        level: d.level === "error" ? ("error" as const) : ("warn" as const),
+        path: d.entry,
+        message: d.message,
+      })),
+    );
+    if (instructions.error !== undefined) {
+      state.exitCode = 2;
+      state.error = instructions.error;
+      state.message = instructions.error;
+      return finalize({ appendIndex: true });
+    }
+
     const telemetry = obs?.telemetry;
     state.telemetry = telemetry;
     const sessionInput = {
@@ -236,6 +252,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       ...(workstreamContext !== undefined ? { workstreamContext } : {}),
       discoveredSkills: skills.discovered,
       activatedSkills: skills.activated,
+      ...(instructions.system.length > 0 ? { instructionsSystem: instructions.system } : {}),
       pipelineHooks: telemetry?.pipelineHooks,
       generateTextFn: input.generateTextFn,
       testModel,

@@ -1,7 +1,6 @@
 import { describe, expect, test } from "bun:test";
 
 import {
-  ASD_STE100,
   CONVENTIONAL_COMMITS_SPEC,
   defineAnalystAgent,
   defineCommitMessageAgent,
@@ -14,16 +13,6 @@ describe("CONVENTIONAL_COMMITS_SPEC", () => {
     expect(CONVENTIONAL_COMMITS_SPEC).toContain("<type>[optional scope]: <description>");
     expect(CONVENTIONAL_COMMITS_SPEC).not.toContain("name: conventional-commits");
     const source = await Bun.file(new URL("./conventional-commits.ts", import.meta.url)).text();
-    expect(source).not.toContain("readFileSync");
-    expect(source).not.toContain("node:fs");
-  });
-});
-
-describe("ASD_STE100", () => {
-  test("embeds STE100 as an inlined constant", async () => {
-    expect(ASD_STE100).toContain("Approved verbs");
-    expect(ASD_STE100).toContain("COMBINED CODEBASE CONTEXT");
-    const source = await Bun.file(new URL("./asd-ste100.ts", import.meta.url)).text();
     expect(source).not.toContain("readFileSync");
     expect(source).not.toContain("node:fs");
   });

@@ -5,6 +5,7 @@ import { defineAnalystAgent, ensureAgentRegistered } from "../agents/index.ts";
 import { stampFindingFingerprints } from "../lib/artifacts.ts";
 import { capabilitiesGenerateText, resolveGatewayModel } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
+import { joinSystemParts } from "../lib/instructions.ts";
 import { mapPool } from "../lib/pool.ts";
 import { renderRemediationPlanMd, writeRemediationPlan } from "../lib/remediations.ts";
 import { withRetry } from "../lib/retry.ts";
@@ -40,6 +41,8 @@ export type AnalyzeFindingsInput = {
   workstreamContext?: string;
   /** Formatted skill catalog + activated bodies. */
   skillSystem?: string;
+  /** Formatted custom instructions from config. */
+  instructionsSystem?: string;
 };
 
 export type AnalyzeFindingsResult = {
@@ -102,6 +105,7 @@ async function triageOneFinding(input: {
   quiet?: boolean;
   workstreamContext?: string;
   skillSystem?: string;
+  instructionsSystem?: string;
 }): Promise<TriageOneResult> {
   const { finding, index: i, total } = input;
   const loc = finding.line !== undefined ? `${finding.file}:${finding.line}` : finding.file;
@@ -138,7 +142,7 @@ async function triageOneFinding(input: {
         pipelineHooks: input.pipelineHooks,
         runId: `${input.runId}-analyst-${i}`,
         model: input.model,
-        system: input.skillSystem ?? "",
+        system: joinSystemParts(input.skillSystem, input.instructionsSystem),
         prompt,
         outputSchema: analystLlmOutputSchema,
         maxSteps: 4,
@@ -249,6 +253,7 @@ export async function analyzeFindings(input: AnalyzeFindingsInput): Promise<Anal
       quiet: input.quiet,
       workstreamContext: input.workstreamContext,
       skillSystem: input.skillSystem,
+      instructionsSystem: input.instructionsSystem,
     }),
   );
 

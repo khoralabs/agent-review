@@ -5,6 +5,7 @@
     "commitMessage": "google/gemini-3.5-flash-lite"
   },
   "skillsDirs": [".agents/skills"],
+  "instructions": [],
   "blockOn": ["error"],
   "maxDiffBytes": 200000,
   "defaultScope": "staged",

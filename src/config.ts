@@ -15,6 +15,8 @@ export type AgentReviewConfig = {
   model: ModelConfig;
   skills: string[];
   skillsDirs: string[];
+  /** Extra system text: literal strings and/or paths/globs to `.md`/`.txt` files. */
+  instructions: string[];
   blockOn: FindingSeverity[];
   maxDiffBytes: number;
   defaultScope: DiffScope;
@@ -37,6 +39,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   model: modelsFor(DEFAULT_MODEL_ID),
   skills: [packagedCodeReviewSkillPath()],
   skillsDirs: [".agents/skills"],
+  instructions: [],
   blockOn: ["error"],
   maxDiffBytes: 200_000,
   defaultScope: "staged",
@@ -200,6 +203,9 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
   if (raw.skillsDirs !== undefined) {
     partial.skillsDirs = parseStringArray(raw.skillsDirs, "skillsDirs");
   }
+  if (raw.instructions !== undefined) {
+    partial.instructions = parseStringArray(raw.instructions, "instructions");
+  }
   if (raw.blockOn !== undefined) partial.blockOn = parseBlockOn(raw.blockOn);
   if (raw.maxDiffBytes !== undefined) {
     if (
@@ -268,6 +274,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
     model,
     skills: overrides.skills ?? filePartial.skills ?? DEFAULT_CONFIG.skills,
     skillsDirs: overrides.skillsDirs ?? filePartial.skillsDirs ?? DEFAULT_CONFIG.skillsDirs,
+    instructions: filePartial.instructions ?? DEFAULT_CONFIG.instructions,
     blockOn: filePartial.blockOn ?? DEFAULT_CONFIG.blockOn,
     maxDiffBytes: filePartial.maxDiffBytes ?? DEFAULT_CONFIG.maxDiffBytes,
     defaultScope: scope,

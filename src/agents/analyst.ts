@@ -1,8 +1,6 @@
 import { createRegisteredAgent } from "@khoralabs/agent-capabilities";
 
 import { reviewToolkit } from "../tools/_toolkit.ts";
-// Embedded string (not a runtime .txt read) so bun builds include the content.
-import ASD_STE100 from "./asd-ste100.ts";
 import { CONVENTIONAL_COMMITS_SPEC } from "./conventional-commits.ts";
 import type { AgentDefinition } from "./types.ts";
 
@@ -18,7 +16,7 @@ const ANALYST_INSTRUCTIONS = [
   "Prefer the finding text, review summary, and provided diff; do not explore the repo unless necessary.",
   "Use inspectBash at most once if surrounding context is missing; never run git or mutate files.",
   "Choose remediate only when the finding is concrete, actionable, and high-signal enough to block or track as a workstream — do not rubber-stamp every nit.",
-  "Write verdicts and plans in Simplified Technical English (STE100, included in these instructions).",
+  "Write verdicts and plans in Simplified Technical English (ASD-STE100).",
   "Always finish with structured output using verdict ignore|remediate — do not end on a tool call.",
 ];
 
@@ -26,7 +24,7 @@ export async function defineAnalystAgent(): Promise<AnalystAgentDefinition> {
   const { staticHash, agent } = await createRegisteredAgent({
     agentId: ANALYST_AGENT_ID,
     name: "Agent Review Analyst",
-    instructions: [ASD_STE100, CONVENTIONAL_COMMITS_SPEC, ...ANALYST_INSTRUCTIONS],
+    instructions: [CONVENTIONAL_COMMITS_SPEC, ...ANALYST_INSTRUCTIONS],
     context: { role: "agent-review-analyst" },
     rootComposable: reviewToolkit,
   });

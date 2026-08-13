@@ -3,6 +3,7 @@ import type { generateText } from "ai";
 import type { AgentReviewConfig } from "../config.ts";
 import { writeAgentSnapshotIfAbsent } from "../lib/agent-snapshot.ts";
 import { type CollectedDiff, collectDiff, type DiffScope } from "../lib/git.ts";
+import { loadInstructionsPrompt } from "../lib/instructions.ts";
 import { resolveOutputDir } from "../lib/observability.ts";
 import { logStatus } from "../lib/status.ts";
 import { loadSkillPrompt } from "../skills/index.ts";
@@ -62,6 +63,12 @@ export async function runCommitMessagePhase(
       return { exitCode: 2, message: skills.error };
     }
 
+    const instructions = await loadInstructionsPrompt(input.config, cwd);
+    if (instructions.error !== undefined) {
+      logStatus(quiet, `commit-message: ${instructions.error}`);
+      return { exitCode: 2, message: instructions.error };
+    }
+
     logStatus(quiet, "commit-message: agent starting…");
     const generated = await runCommitMessageAgent({
       cwd,
@@ -69,6 +76,7 @@ export async function runCommitMessagePhase(
       modelId: input.config.model.commitMessage,
       diff,
       skillSystem: skills.system,
+      ...(instructions.system.length > 0 ? { instructionsSystem: instructions.system } : {}),
       generateTextFn: input.generateTextFn,
       testModel: input.generateTextFn !== undefined,
     });

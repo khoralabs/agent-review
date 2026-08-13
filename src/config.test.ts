@@ -100,6 +100,7 @@ describe("parseArgs / resolveConfig", () => {
     expect(cfg.analystConcurrency).toBe(4);
     expect(cfg.model).toEqual(modelsFor("google/gemini-3.5-flash"));
     expect(cfg.skip).toBe(false);
+    expect(cfg.instructions).toEqual([]);
   });
 
   test("parses --analyst-concurrency", () => {
@@ -140,6 +141,19 @@ describe("parseArgs / resolveConfig", () => {
     });
     expect(() => parseModelConfig({ review: "" })).toThrow(/model\.review/);
     expect(() => parseModelConfig({ weird: "x" })).toThrow(/unknown key/);
+  });
+
+  test("resolveConfig loads instructions from file", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-instr-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      `${JSON.stringify({
+        instructions: ["Be terse.", "docs/*.md"],
+      })}\n`,
+    );
+    const cfg = resolveConfig({ cwd: dir });
+    expect(cfg.instructions).toEqual(["Be terse.", "docs/*.md"]);
+    fs.rmSync(dir, { recursive: true, force: true });
   });
 
   test("resolveConfig loads string model and skip from file", () => {

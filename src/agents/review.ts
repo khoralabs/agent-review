@@ -1,8 +1,6 @@
 import { createRegisteredAgent } from "@khoralabs/agent-capabilities";
 
 import { reviewToolkit } from "../tools/_toolkit.ts";
-// Embedded string (not a runtime .txt read) so bun builds include the content.
-import ASD_STE100 from "./asd-ste100.ts";
 import { CONVENTIONAL_COMMITS_SPEC } from "./conventional-commits.ts";
 import type { AgentDefinition } from "./types.ts";
 
@@ -21,7 +19,7 @@ const REVIEW_INSTRUCTIONS = [
   "Never run git commands; the host already collected the diff.",
   "Never modify files or run write/destructive commands.",
   "Follow activated skill instructions when they apply.",
-  "Write findings and summaries in Simplified Technical English (STE100, included in these instructions).",
+  "Write findings and summaries in Simplified Technical English (ASD-STE100).",
   "Report concrete, actionable findings with severity error, warning, or info — avoid style nits and speculative bikesheds.",
   "Use error for bugs, security issues, broken contracts, or likely regressions.",
   "Use warning for quality, maintainability, or risky patterns worth tracking.",
@@ -34,7 +32,7 @@ export async function defineReviewAgent(): Promise<ReviewAgentDefinition> {
   const { staticHash, agent } = await createRegisteredAgent({
     agentId: REVIEW_AGENT_ID,
     name: "Agent Review",
-    instructions: [ASD_STE100, CONVENTIONAL_COMMITS_SPEC, ...REVIEW_INSTRUCTIONS],
+    instructions: [CONVENTIONAL_COMMITS_SPEC, ...REVIEW_INSTRUCTIONS],
     context: { role: "agent-review" },
     rootComposable: reviewToolkit,
   });
