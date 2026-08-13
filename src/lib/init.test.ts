@@ -36,7 +36,9 @@ describe("runInit", () => {
     expect(result.hookWritten).toBe(true);
     expect(result.skillWritten).toBe(true);
     expect(fs.existsSync(path.join(dir, ".agent-review.json"))).toBe(true);
-    expect(fs.existsSync(path.join(dir, ".husky", "commit-msg"))).toBe(true);
+    const hookPath = path.join(dir, ".husky", "commit-msg");
+    expect(fs.existsSync(hookPath)).toBe(true);
+    expect(fs.statSync(hookPath).mode & 0o111).not.toBe(0);
     expect(fs.existsSync(path.join(dir, ".agents", "skills", "agent-review", "SKILL.md"))).toBe(
       true,
     );

@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import { packagedExampleConfigPath, packagedOperatorSkillPath } from "./package-root.ts";
@@ -28,6 +28,7 @@ function writeIfNeeded(dest: string, contents: string, force: boolean, mode?: nu
   if (existsSync(dest) && !force) return false;
   mkdirSync(path.dirname(dest), { recursive: true });
   writeFileSync(dest, contents, mode !== undefined ? { mode } : undefined);
+  if (mode !== undefined) chmodSync(dest, mode);
   return true;
 }
 
