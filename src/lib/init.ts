@@ -28,7 +28,13 @@ function writeIfNeeded(dest: string, contents: string, force: boolean, mode?: nu
   if (existsSync(dest) && !force) return false;
   mkdirSync(path.dirname(dest), { recursive: true });
   writeFileSync(dest, contents, mode !== undefined ? { mode } : undefined);
-  if (mode !== undefined) chmodSync(dest, mode);
+  if (mode !== undefined) {
+    try {
+      chmodSync(dest, mode);
+    } catch {
+      // Best-effort: some filesystems ignore or reject chmod after write.
+    }
+  }
   return true;
 }
 
