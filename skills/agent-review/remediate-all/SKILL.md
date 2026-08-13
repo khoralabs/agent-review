@@ -1,15 +1,16 @@
 ---
-name: loop
+name: remediate-all
 description: >-
-  Loop remediate → commit → re-review with agent-review until status is
-  clean at the configured severity threshold. Use after a blocked commit or
-  when clearing remediations under .data/agent-review/.
+  Remediate-all: loop remediate → commit → re-review with agent-review until
+  status is clean at the configured severity threshold. Use after a blocked
+  commit or when clearing remediations under .data/agent-review/.
 ---
 
-# Agent-review remediation loop
+# Agent-review remediate-all
 
 Operator loop driven by you (coding agent) + the CLI. There is no in-package
-auto-fixer.
+auto-fixer. Prefer this after a husky `commit-msg` block; for clearing findings
+**without** committing, use [../complete-feature/SKILL.md](../complete-feature/SKILL.md).
 
 ## Stop condition
 

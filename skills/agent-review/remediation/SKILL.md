@@ -44,7 +44,7 @@ Load [references/layout.md](references/layout.md) if you need the full directory
 4. Follow `Source: reviews/<runId>/run.json finding[N]` to the run artifact if you need the original finding text or related files list.
 5. Do **not** invent a competing plan. If the written plan is wrong, log why (`note`) and update `plan.md` steps deliberately. Progress lives in `work-log.jsonl`.
 
-For the full remediate → commit → re-review loop, load [../loop/SKILL.md](../loop/SKILL.md).
+For the full remediate → commit → re-review loop, load [../remediate-all/SKILL.md](../remediate-all/SKILL.md). For clearing findings without committing, load [../complete-feature/SKILL.md](../complete-feature/SKILL.md).
 
 ## Reasoning rules
 
