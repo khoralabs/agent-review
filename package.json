@@ -1,6 +1,6 @@
 {
   "name": "@khoralabs/agent-review",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "Capabilities-based adversarial code review and analyst triage CLI for git diffs.",
   "license": "MIT",
