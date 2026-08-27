@@ -27,7 +27,7 @@ Suggested `package.json` scripts:
 }
 ```
 
-Activated review skill defaults to the **packaged** `skills/agent-review/code-review` path inside this package—you do not need to set `skills` in config unless you override it.
+Activated review skill defaults to the **packaged** `skills/agent-review/review/code-review` path inside this package—you do not need to set `skills` in config unless you override it.
 
 ## CLI
 
@@ -161,7 +161,7 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 
 ## Operator skill (Cursor / Claude Code)
 
-Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) (remediation, commit-message, documentation, remediate-all, complete-feature, commit-chunks, history-walk, and code-review sub-skills). Documentation sub-skills: [`documentation/`](./skills/agent-review/documentation/SKILL.md) (readme, adr, diataxis, changelog).
+Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) with grouped sub-skills: [`remediation/`](./skills/agent-review/remediation/SKILL.md), [`commit/`](./skills/agent-review/commit/SKILL.md), [`documentation/`](./skills/agent-review/documentation/SKILL.md), [`review/`](./skills/agent-review/review/SKILL.md).
 
 Prefer `bunx agent-review init` (copies into `.agents/skills/agent-review`). For local development of this package you can instead symlink:
 
@@ -170,7 +170,7 @@ mkdir -p .agents/skills
 ln -sfn ../../skills/agent-review .agents/skills/agent-review
 ```
 
-This skill is for **coding agents** operating the CLI — not for the review agent’s activated `skills` list. The packaged activated review skill is `skills/agent-review/code-review` inside the npm package. History walks use [`skills/agent-review/history-walk`](./skills/agent-review/history-walk/SKILL.md).
+This skill is for **coding agents** operating the CLI — not for the review agent’s activated `skills` list. The packaged activated review skill is `skills/agent-review/review/code-review` inside the npm package. History walks use [`skills/agent-review/review/history-walk`](./skills/agent-review/review/history-walk/SKILL.md).
 
 ## Config
 

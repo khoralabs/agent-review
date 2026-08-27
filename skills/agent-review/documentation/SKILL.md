@@ -37,5 +37,5 @@ matches the artifact you are writing or auditing.
 | Page mixes teaching + reference, or docs feel cluttered | [diataxis/SKILL.md](diataxis/SKILL.md) |
 | Unreleased notes or release cut | [changelog/SKILL.md](changelog/SKILL.md) |
 
-Changelog work pairs with [commit-message/SKILL.md](../commit-message/SKILL.md)
+Changelog work pairs with [commit/commit-message/SKILL.md](../commit/commit-message/SKILL.md)
 (Conventional Commits) at release time.

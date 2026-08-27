@@ -3,17 +3,14 @@ name: agent-review
 description: >-
   Operate @khoralabs/agent-review from a coding agent: run review/analyze,
   implement remediations from plan.md, draft Conventional Commits messages,
-  maintain Keep a Changelog CHANGELOG.md notes, remediate-all (remediate →
-  commit → re-review) until blocking findings are gone, complete-feature
-  (same via CLI without committing, before a manual commit), or walk a git
-  commit range to catalog historical findings, land scoped work groups as
-  separate commits (commit-chunks), maintain READMEs (Standard README),
-  Architecture Decision Records, or Diátaxis technical docs.
+  maintain documentation (README, ADR, Diátaxis, changelog), remediate-all
+  (remediate → commit → re-review) until blocking findings are gone,
+  complete-feature (same via CLI without committing), walk a git commit range,
+  or land scoped work groups as separate commits (commit-chunks).
   Use when a commit-msg hook blocks, when finishing a feature before commit,
   when working under .data/agent-review/, when drafting a commit message or
-  changelog for this repo, when clearing agent-review findings, when landing
-  several small commits iteratively, when writing or auditing README/ADR/docs,
-  or when evaluating a from→to commit history walk.
+  maintaining docs, when clearing agent-review findings, when landing several
+  small commits iteratively, or when evaluating a from→to commit history walk.
 ---
 
 # Agent-review (operator)
@@ -27,8 +24,7 @@ read-only; you implement fixes (and commit only when using remediate-all).
 - Finish a feature and clear findings **before** a manual commit (no commit)
 - User points at `.data/agent-review/reviews/<runId>/`
 - Need a Conventional Commits message for the current diff
-- Need Keep a Changelog updates (`CHANGELOG.md`, Unreleased, release cut)
-- Maintain README, ADR, or technical docs per project conventions
+- Maintain README, ADR, technical docs, or changelog
 - Clear findings at/above config `blockOn` via remediate → commit → re-review
 
 ## CLI map
@@ -65,14 +61,10 @@ Default stop threshold matches config `blockOn` **and more severe** (e.g.
 
 | Path | Use when |
 |------|----------|
-| [code-review/SKILL.md](code-review/SKILL.md) | Adversarial diff review (activated for LLM agents) |
-| [remediate-all/SKILL.md](remediate-all/SKILL.md) | Remediate → commit → re-review until clean |
-| [complete-feature/SKILL.md](complete-feature/SKILL.md) | CLI remediate loop without committing |
-| [remediation/SKILL.md](remediation/SKILL.md) | Implementing one `plan.md` |
-| [commit-message/SKILL.md](commit-message/SKILL.md) | Spec + drafting via CLI |
+| [remediation/SKILL.md](remediation/SKILL.md) | Fix findings: one plan, complete-feature, or remediate-all |
+| [commit/SKILL.md](commit/SKILL.md) | Commit messages and commit-chunks landing |
 | [documentation/SKILL.md](documentation/SKILL.md) | README, ADR, Diátaxis docs, changelog |
-| [history-walk/SKILL.md](history-walk/SKILL.md) | Commit-range walk + catalog |
-| [commit-chunks/SKILL.md](commit-chunks/SKILL.md) | Land scoped work groups as separate commits |
+| [review/SKILL.md](review/SKILL.md) | Code review agent skill, history walks |
 
-Activated LLM skill for review remains `skills/agent-review/code-review` in `.agent-review.json`.
-Do **not** activate this operator skill for the review/analyst agents.
+Activated LLM skill for review remains `skills/agent-review/review/code-review` in
+`.agent-review.json`. Do **not** activate this operator skill for the review/analyst agents.

@@ -67,7 +67,7 @@ bunx agent-review status --min-severity warning
    git commit -m "$(…message…)"
    ```
 
-   Spec guidance: [../commit-message/SKILL.md](../commit-message/SKILL.md).
+   Spec guidance: [../../commit/commit-message/SKILL.md](../../commit/commit-message/SKILL.md).
 
 5. **Re-enter via the hook.** The commit-msg hook runs `run` again. That is the
    next review — do **not** set `"skip": true` in `.agent-review.json` on the

@@ -18,12 +18,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Grouped documentation operator skills under `skills/agent-review/documentation/` (readme, adr, diataxis, changelog) with a router `documentation/SKILL.md`
+- Grouped operator skills under `remediation/`, `commit/`, `documentation/`, and `review/` with router `SKILL.md` in each
+- Grouped documentation operator skills under `skills/agent-review/documentation/` (readme, adr, diataxis, changelog)
 - Renamed the `loop` operator skill to `remediate-all` (skill path and name)
 
 ### Removed
 
-- `skills/agent-review/loop` — use `skills/agent-review/remediate-all` instead
+- `skills/agent-review/loop` — use `skills/agent-review/remediation/remediate-all` instead
 
 ## [0.1.1] - 2026-08-13
 

@@ -27,7 +27,9 @@ describe("stageRelease", () => {
     expect(existsSync(path.join(result.releaseDir, "bin", "agent-review"))).toBe(true);
     expect(existsSync(path.join(result.releaseDir, "src", "cli.ts"))).toBe(true);
     expect(
-      existsSync(path.join(result.releaseDir, "skills", "agent-review", "code-review", "SKILL.md")),
+      existsSync(
+        path.join(result.releaseDir, "skills", "agent-review", "review", "code-review", "SKILL.md"),
+      ),
     ).toBe(true);
     expect(existsSync(path.join(result.releaseDir, ".agent-review.example.json"))).toBe(true);
     expect(existsSync(path.join(result.releaseDir, "LICENSE"))).toBe(true);

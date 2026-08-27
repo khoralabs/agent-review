@@ -25,7 +25,7 @@ export function resolvePackageRoot(fromDir: string = import.meta.dir): string {
 }
 
 export function packagedCodeReviewSkillPath(): string {
-  return path.join(resolvePackageRoot(), "skills", "agent-review", "code-review");
+  return path.join(resolvePackageRoot(), "skills", "agent-review", "review", "code-review");
 }
 
 export function packagedOperatorSkillPath(): string {
