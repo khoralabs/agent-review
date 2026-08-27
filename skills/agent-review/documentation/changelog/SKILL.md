@@ -10,7 +10,7 @@ description: >-
 # Changelogs (agent-review)
 
 Maintain `CHANGELOG.md` for humans. Prefer notable user-facing differences over
-commit-log dumps. Pair with [commit-message/SKILL.md](../commit-message/SKILL.md)
+commit-log dumps. Pair with [commit-message/SKILL.md](../../commit-message/SKILL.md)
 (Conventional Commits) and SemVer when cutting versions.
 
 ## When to use

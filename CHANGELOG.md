@@ -9,12 +9,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `readme` operator skill for [Standard README](https://github.com/RichardLitt/standard-readme/blob/main/spec.md) compliance
+- `adr` operator skill for Architecture Decision Records ([adr.github.io](https://adr.github.io), Nygard template)
+- `diataxis` operator skill for [Diátaxis](https://diataxis.fr) technical documentation quadrants
 - `changelog` operator skill for Keep a Changelog 1.1.0 + SemVer release notes
 - `complete-feature` operator skill: remediate → re-review via the CLI until clean, without committing
 - `remediate-all` operator skill (remediate → commit → re-review until blocking findings are gone)
 
 ### Changed
 
+- Grouped documentation operator skills under `skills/agent-review/documentation/` (readme, adr, diataxis, changelog) with a router `documentation/SKILL.md`
 - Renamed the `loop` operator skill to `remediate-all` (skill path and name)
 
 ### Removed

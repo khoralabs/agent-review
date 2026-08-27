@@ -161,7 +161,7 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 
 ## Operator skill (Cursor / Claude Code)
 
-Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) (remediation, commit-message, changelog, remediate-all, complete-feature, commit-chunks, history-walk, and code-review sub-skills).
+Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) (remediation, commit-message, documentation, remediate-all, complete-feature, commit-chunks, history-walk, and code-review sub-skills). Documentation sub-skills: [`documentation/`](./skills/agent-review/documentation/SKILL.md) (readme, adr, diataxis, changelog).
 
 Prefer `bunx agent-review init` (copies into `.agents/skills/agent-review`). For local development of this package you can instead symlink:
 
