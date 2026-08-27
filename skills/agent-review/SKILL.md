@@ -6,11 +6,13 @@ description: >-
   maintain Keep a Changelog CHANGELOG.md notes, remediate-all (remediate →
   commit → re-review) until blocking findings are gone, complete-feature
   (same via CLI without committing, before a manual commit), or walk a git
-  commit range to catalog historical findings.
+  commit range to catalog historical findings, or land scoped work groups as
+  separate commits (commit-chunks).
   Use when a commit-msg hook blocks, when finishing a feature before commit,
   when working under .data/agent-review/, when drafting a commit message or
-  changelog for this repo, when clearing agent-review findings, or when
-  evaluating a from→to commit history walk.
+  changelog for this repo, when clearing agent-review findings, when landing
+  several small commits iteratively, or when evaluating a from→to commit
+  history walk.
 ---
 
 # Agent-review (operator)
@@ -68,6 +70,7 @@ Default stop threshold matches config `blockOn` **and more severe** (e.g.
 | [commit-message/SKILL.md](commit-message/SKILL.md) | Spec + drafting via CLI |
 | [changelog/SKILL.md](changelog/SKILL.md) | Keep a Changelog 1.1.0 + SemVer release notes |
 | [history-walk/SKILL.md](history-walk/SKILL.md) | Commit-range walk + catalog |
+| [commit-chunks/SKILL.md](commit-chunks/SKILL.md) | Land scoped work groups as separate commits |
 
 Activated LLM skill for review remains `skills/agent-review/code-review` in `.agent-review.json`.
 Do **not** activate this operator skill for the review/analyst agents.
