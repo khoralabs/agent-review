@@ -27,6 +27,7 @@ import {
 } from "../lib/run-id.ts";
 import { logStatus } from "../lib/status.ts";
 import { loadWorkstreamPrompt } from "../lib/workstream.ts";
+import { maybeLinkReviewToWorkstream } from "../lib/workstreams.ts";
 import type { PersistedReviewResult } from "../schema/index.ts";
 import { loadSkillPrompt, type SkillDiagnostic } from "../skills/index.ts";
 import { runReviewAgent } from "./review.ts";
@@ -51,6 +52,8 @@ export type RunReviewPhaseInput = {
   gitRevParseFn?: ResolveReviewGitRefsInput["revParseFn"];
   skipArtifacts?: boolean;
   quiet?: boolean;
+  /** Explicit workstream to link after persist (overrides active when set). */
+  workstreamId?: string;
 };
 
 export type RunReviewPhaseResult = {
@@ -354,6 +357,13 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
         if (!opts.appendIndex) {
           logStatus(quiet, "review findings written");
         }
+        const linked = maybeLinkReviewToWorkstream({
+          cwd,
+          outputDir,
+          runId: state.runId,
+          workstreamId: input.workstreamId,
+          autoLink: input.config.workstreamAutoLink,
+        });
         telemetryPath = obs?.telemetryPath;
         const relativePaths = [
           artifacts.relativeRunPath,
@@ -361,6 +371,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
             ? [artifacts.relativeReviewsPath]
             : []),
           ...(artifacts.relativeDiffGzipPath !== undefined ? [artifacts.relativeDiffGzipPath] : []),
+          ...(linked !== undefined ? [linked.relativeLinkPath] : []),
           ...(telemetryPath !== undefined ? [toRepoRelativePath(cwd, telemetryPath)] : []),
         ];
         state.message = `${state.message}\n\nartifacts:\n${relativePaths.map((p) => `- ${p}`).join("\n")}`;

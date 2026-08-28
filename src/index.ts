@@ -25,6 +25,7 @@ export {
   parseArgs,
   parseModelConfig,
   resolveConfig,
+  type WorkstreamSubcommand,
 } from "./config.ts";
 export {
   type AgentCapabilitySnapshot,
@@ -106,10 +107,13 @@ export {
   resolvePackageRoot,
 } from "./lib/package-root.ts";
 export {
+  ACTIVE_WORKSTREAM_FILENAME,
   AGENTS_DIRNAME,
+  activeWorkstreamPath,
   agentSnapshotLegacyPath,
   agentSnapshotPath,
   agentsDir,
+  CHUNKS_JSON_FILENAME,
   DIFF_GZIP_FILENAME,
   PLAN_FILENAME,
   REVIEWS_DIRNAME,
@@ -118,8 +122,19 @@ export {
   reviewsRoot,
   runDir,
   WALKS_DIRNAME,
+  WORK_LOG_FILENAME,
+  WORKSTREAM_ADR_FILENAME,
+  WORKSTREAM_COMMITS_DIRNAME,
+  WORKSTREAM_TODO_FILENAME,
+  WORKSTREAMS_DIRNAME,
+  WORKSTREAMS_JSONL_FILENAME,
   walkDir,
   walksRoot,
+  workstreamCommitLinkPath,
+  workstreamCommitsDir,
+  workstreamDir,
+  workstreamsIndexPath,
+  workstreamsRoot,
 } from "./lib/paths.ts";
 export { mapPool } from "./lib/pool.ts";
 export {
@@ -187,6 +202,27 @@ export {
   loadWorkstreamPrompt,
   parseRunIdShortSha,
 } from "./lib/workstream.ts";
+export {
+  type AppendWorkstreamWorkLogInput,
+  type AppendWorkstreamWorkLogResult,
+  appendWorkstreamWorkLog,
+  clearActiveWorkstreamId,
+  doneWorkstream,
+  type LinkReviewToWorkstreamInput,
+  type LinkReviewToWorkstreamResult,
+  linkReviewToWorkstream,
+  maybeLinkReviewToWorkstream,
+  readActiveWorkstreamId,
+  resolveWorkstreamDir,
+  resolveWorkstreamIdOrActive,
+  resumeWorkstream,
+  type StartWorkstreamInput,
+  type StartWorkstreamResult,
+  startWorkstream,
+  type WorkstreamIndexLine,
+  type WorkstreamStatus,
+  writeActiveWorkstreamId,
+} from "./lib/workstreams.ts";
 export {
   artifactFromReview,
   type OrchestrateInProcessInput,

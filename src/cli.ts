@@ -8,6 +8,14 @@ import {
   workLogEventSchema,
   workLogStatusSchema,
 } from "./lib/work-log.ts";
+import {
+  appendWorkstreamWorkLog,
+  doneWorkstream,
+  linkReviewToWorkstream,
+  resolveWorkstreamIdOrActive,
+  resumeWorkstream,
+  startWorkstream,
+} from "./lib/workstreams.ts";
 import { runAnalyzePhase } from "./pipeline/analyze-phase.ts";
 import { runCommitMessagePhase } from "./pipeline/commit-message-phase.ts";
 import { orchestrateInProcess, orchestrateViaCli } from "./pipeline/orchestrate.ts";
@@ -26,16 +34,26 @@ Commands:
   status         Show blocking remediations for a run (default: latest; no LLM)
   walk           Review each commit in from..to; catalog + dedupe findings
   log            Append a JSONL work-log entry under a remediation directory
+  workstream     Opt-in workstream catalog (start|resume|link|log|done)
   migrate        Convert legacy runs/ + remediations/ into reviews/<runId>/
   commit-message Draft a Conventional Commits message for the current diff
+
+Workstream subcommands:
+  workstream start [--title …] [--message …]
+  workstream resume <workstreamId>
+  workstream link <runId> [--workstream-id <id>]
+  workstream log --event … --message … [--workstream-id <id>]
+  workstream done [--workstream-id <id>] [--message …]
 
 Options:
   --force                   init: overwrite existing config/hook/skill
   --run-id <id>             analyze / status (status defaults to latest)
   --remediation <id|path>   required for log (<runId>/<index> or reviews/…)
-  --event <name>            log: started|note|artifact|status|done
-  --message <text>          log: entry message (review: commit message)
-  --path <rel>              log: artifact path relative to remediation dir
+  --workstream-id <id>      workstream link/log/done; also run/review auto-link override
+  --title <text>            workstream start: optional title
+  --event <name>            log / workstream log: started|note|artifact|status|done
+  --message <text>          log / workstream: entry message (review: commit message)
+  --path <rel>              log: artifact path relative to remediation/workstream dir
   --status <name>           log: proposed|in_progress|blocked|done
   --agent <label>           log: optional agent/caller label
   --min-severity <level>    status: error|warning|info (default: config blockOn)
@@ -67,7 +85,8 @@ Env:
 
 Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
-  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init)
+  workstreamAutoLink  when true (default) and active-workstream is set, symlink new reviews
+  skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
 Artifacts (repo-root-relative paths):
@@ -75,6 +94,9 @@ Artifacts (repo-root-relative paths):
   <output-dir>/reviews/<YYYYMMDDTHHMMSSZ>-<shortSha>/diff.gz
   <output-dir>/reviews/<runId>/remediations/<index>/plan.md
   <output-dir>/reviews/<runId>/remediations/<index>/work-log.jsonl
+  <output-dir>/workstreams/<id>/{chunks.json,adr.md,todo.md,work-log.jsonl,commits/}
+  <output-dir>/workstreams.jsonl
+  <output-dir>/active-workstream
   <output-dir>/walks/<walkId>/walk.json
   <output-dir>/walks/<walkId>/catalog.json
   <output-dir>/walks/<walkId>/summary.md
@@ -134,6 +156,9 @@ function flagArgvFromOverrides(overrides: ParsedCliArgs): string[] {
   }
   if (overrides.noEmit === true) {
     argv.push("--no-emit");
+  }
+  if (overrides.workstreamId !== undefined) {
+    argv.push("--workstream-id", overrides.workstreamId);
   }
   if (overrides.skills !== undefined) {
     argv.push("--skills", overrides.skills.join(","));
@@ -201,6 +226,176 @@ function runLogCommand(overrides: ParsedCliArgs, config: AgentReviewConfig, cwd:
   }
 }
 
+async function revParseShort(cwd: string, rev: string): Promise<string | undefined> {
+  const proc = Bun.spawn(["git", "rev-parse", "--short", rev], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  if (exitCode !== 0) return undefined;
+  const short = stdout.trim();
+  return short.length > 0 ? short : undefined;
+}
+
+async function revParseFull(cwd: string, rev: string): Promise<string | undefined> {
+  const proc = Bun.spawn(["git", "rev-parse", rev], {
+    cwd,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  const [stdout, exitCode] = await Promise.all([new Response(proc.stdout).text(), proc.exited]);
+  if (exitCode !== 0) return undefined;
+  const full = stdout.trim();
+  return full.length > 0 ? full : undefined;
+}
+
+async function runWorkstreamCommand(
+  overrides: ParsedCliArgs,
+  config: AgentReviewConfig,
+  cwd: string,
+): Promise<number> {
+  const sub = overrides.workstreamSubcommand;
+  if (sub === undefined) {
+    console.error("workstream requires a subcommand: start|resume|link|log|done");
+    return 2;
+  }
+
+  try {
+    if (sub === "start") {
+      const shortSha = (await revParseShort(cwd, "HEAD")) ?? "unknown";
+      const gitHead = await revParseFull(cwd, "HEAD");
+      const started = startWorkstream({
+        cwd,
+        outputDir: config.outputDir,
+        shortSha,
+        ...(gitHead !== undefined ? { gitHead } : {}),
+        ...(overrides.title !== undefined ? { title: overrides.title } : {}),
+      });
+      if (overrides.message !== undefined && overrides.message.trim().length > 0) {
+        appendWorkstreamWorkLog({
+          cwd,
+          outputDir: config.outputDir,
+          workstreamId: started.workstreamId,
+          entry: {
+            event: "started",
+            message: overrides.message.trim(),
+            status: "in_progress",
+            ...(overrides.agent !== undefined ? { agent: overrides.agent } : {}),
+          },
+        });
+      }
+      console.error(`agent-review: workstream started ${started.relativeDir}`);
+      console.log(started.workstreamId);
+      return 0;
+    }
+
+    if (sub === "resume") {
+      const id = overrides.workstreamId?.trim();
+      if (id === undefined || id.length === 0) {
+        console.error("workstream resume requires <workstreamId>");
+        return 2;
+      }
+      const resumed = resumeWorkstream({
+        cwd,
+        outputDir: config.outputDir,
+        workstreamId: id,
+      });
+      console.error(`agent-review: workstream resumed ${resumed.relativeDir}`);
+      console.log(resumed.workstreamId);
+      return 0;
+    }
+
+    if (sub === "done") {
+      const result = doneWorkstream({
+        cwd,
+        outputDir: config.outputDir,
+        workstreamId: overrides.workstreamId,
+        message: overrides.message,
+        agent: overrides.agent,
+      });
+      console.error(
+        `agent-review: workstream done ${result.workstreamId}${result.clearedActive ? " (cleared active)" : ""}`,
+      );
+      console.log(result.workstreamId);
+      return 0;
+    }
+
+    if (sub === "link") {
+      const runId = overrides.linkRunId?.trim() || overrides.runId?.trim();
+      if (runId === undefined || runId.length === 0) {
+        console.error("workstream link requires <runId>");
+        return 2;
+      }
+      const workstreamId = resolveWorkstreamIdOrActive({
+        cwd,
+        outputDir: config.outputDir,
+        workstreamId: overrides.workstreamId,
+      });
+      const linked = linkReviewToWorkstream({
+        cwd,
+        outputDir: config.outputDir,
+        workstreamId,
+        runId,
+      });
+      console.error(
+        `agent-review: workstream link ${linked.created ? "created" : "exists"} ${linked.relativeLinkPath}`,
+      );
+      console.log(linked.relativeLinkPath);
+      return 0;
+    }
+
+    // log
+    const eventRaw = overrides.event?.trim();
+    if (eventRaw === undefined || eventRaw.length === 0) {
+      console.error("workstream log requires --event");
+      return 2;
+    }
+    const message = overrides.message?.trim();
+    if (message === undefined || message.length === 0) {
+      console.error("workstream log requires --message");
+      return 2;
+    }
+    const eventParsed = workLogEventSchema.safeParse(eventRaw);
+    if (!eventParsed.success) {
+      console.error(`--event must be one of: ${workLogEventSchema.options.join("|")}`);
+      return 2;
+    }
+    let status: WorkLogEntryInput["status"];
+    if (overrides.status !== undefined) {
+      const statusParsed = workLogStatusSchema.safeParse(overrides.status.trim());
+      if (!statusParsed.success) {
+        console.error(`--status must be one of: ${workLogStatusSchema.options.join("|")}`);
+        return 2;
+      }
+      status = statusParsed.data;
+    }
+    const workstreamId = resolveWorkstreamIdOrActive({
+      cwd,
+      outputDir: config.outputDir,
+      workstreamId: overrides.workstreamId,
+    });
+    const written = appendWorkstreamWorkLog({
+      cwd,
+      outputDir: config.outputDir,
+      workstreamId,
+      entry: {
+        event: eventParsed.data,
+        message,
+        ...(overrides.path !== undefined ? { artifact: overrides.path } : {}),
+        ...(status !== undefined ? { status } : {}),
+        ...(overrides.agent !== undefined ? { agent: overrides.agent } : {}),
+      },
+    });
+    console.error(`agent-review: workstream logged ${written.entry.event}`);
+    console.log(written.relativeWorkLogPath);
+    return 0;
+  } catch (err) {
+    console.error(err instanceof Error ? err.message : String(err));
+    return 2;
+  }
+}
+
 export async function main(argv: string[] = process.argv.slice(2)): Promise<number> {
   let overrides: ParsedCliArgs;
   try {
@@ -225,14 +420,15 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     return 2;
   }
 
-  // `log` / `migrate` / `commit-message` / `status` / `init` are exempt (skip is for review pipeline).
+  // Exempt from skip: log / migrate / commit-message / status / init / workstream
   if (
     config.skip &&
     overrides.command !== "log" &&
     overrides.command !== "migrate" &&
     overrides.command !== "commit-message" &&
     overrides.command !== "status" &&
-    overrides.command !== "init"
+    overrides.command !== "init" &&
+    overrides.command !== "workstream"
   ) {
     const via =
       process.env.SKIP_AGENT_REVIEW?.trim() === "1" ? "SKIP_AGENT_REVIEW=1" : "config.skip=true";
@@ -251,6 +447,14 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       console.error(err instanceof Error ? err.message : String(err));
       return 2;
     }
+  }
+
+  if (overrides.command === "workstream") {
+    if (overrides.noEmit === true) {
+      console.error("workstream cannot be used with --no-emit");
+      return 2;
+    }
+    return runWorkstreamCommand(overrides, config, cwd);
   }
 
   if (overrides.command === "log") {
@@ -396,6 +600,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
       commitMessageFile: overrides.commitMessageFile,
       skipArtifacts: overrides.noEmit === true,
       quiet: overrides.noEmit === true ? false : undefined,
+      workstreamId: overrides.workstreamId,
     });
     console.error(outcome.message);
     if (outcome.runIdStdout !== undefined) {
@@ -417,6 +622,7 @@ export async function main(argv: string[] = process.argv.slice(2)): Promise<numb
     commitMessage: overrides.commitMessage,
     skipArtifacts: overrides.noEmit === true,
     quiet: overrides.noEmit === true ? false : undefined,
+    workstreamId: overrides.workstreamId,
   });
   console.error(outcome.message);
   return outcome.exitCode;

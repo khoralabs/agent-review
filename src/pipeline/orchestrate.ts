@@ -143,6 +143,7 @@ export async function orchestrateInProcess(
     skipArtifacts: true,
     quiet,
     artifact,
+    workstreamId: input.workstreamId,
   });
 
   return {

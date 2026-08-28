@@ -18,6 +18,7 @@ import { loadInstructionsPrompt } from "../lib/instructions.ts";
 import { createReviewObservability, resolveOutputDir } from "../lib/observability.ts";
 import { logStatus } from "../lib/status.ts";
 import { loadWorkstreamPrompt } from "../lib/workstream.ts";
+import { maybeLinkReviewToWorkstream } from "../lib/workstreams.ts";
 import type { PersistedReviewResult } from "../schema/index.ts";
 import { loadSkillPrompt } from "../skills/index.ts";
 import { analyzeFindings } from "./analyze.ts";
@@ -34,6 +35,8 @@ export type RunAnalyzePhaseInput = {
   quiet?: boolean;
   /** When set, skip loading run.json from disk. */
   artifact?: ReviewRunArtifact;
+  /** Explicit workstream to link after persist (overrides active when set). */
+  workstreamId?: string;
 };
 
 export type RunAnalyzePhaseResult = {
@@ -262,11 +265,19 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
           error,
           diagnostics: artifact.diagnostics ?? [],
         });
+        const linked = maybeLinkReviewToWorkstream({
+          cwd,
+          outputDir,
+          runId,
+          workstreamId: input.workstreamId,
+          autoLink: input.config.workstreamAutoLink,
+        });
         telemetryPath = obs?.telemetryPath;
         const relativePaths = [
           artifacts.relativeRunPath,
           artifacts.relativeReviewsPath,
           ...(artifacts.relativeDiffGzipPath !== undefined ? [artifacts.relativeDiffGzipPath] : []),
+          ...(linked !== undefined ? [linked.relativeLinkPath] : []),
           ...(telemetryPath !== undefined ? [toRepoRelativePath(cwd, telemetryPath)] : []),
         ];
         message = `${message}\n\nartifacts:\n${relativePaths.map((p) => `- ${p}`).join("\n")}`;
