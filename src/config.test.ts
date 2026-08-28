@@ -174,6 +174,9 @@ describe("parseArgs / resolveConfig", () => {
     );
     const cfg = resolveConfig({ cwd: dir });
     expect(cfg.workstreamAutoLink).toBe(false);
+
+    const overridden = resolveConfig({ cwd: dir, workstreamAutoLink: true });
+    expect(overridden.workstreamAutoLink).toBe(true);
   });
 
   test("parseModelConfig accepts string and partial object", () => {

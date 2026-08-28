@@ -96,6 +96,8 @@ export type CliOverrides = {
   agent?: string;
   analystConcurrency?: number;
   includeWorkstream?: boolean;
+  /** Programmatic override for workstreamAutoLink (no CLI flag). */
+  workstreamAutoLink?: boolean;
   /** Skip writing pipeline artifacts (CLI-only). */
   noEmit?: boolean;
   /** status: least severe severity to treat as blocking. */
@@ -310,7 +312,10 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       overrides.includeWorkstream ??
       filePartial.includeWorkstream ??
       DEFAULT_CONFIG.includeWorkstream,
-    workstreamAutoLink: filePartial.workstreamAutoLink ?? DEFAULT_CONFIG.workstreamAutoLink,
+    workstreamAutoLink:
+      overrides.workstreamAutoLink ??
+      filePartial.workstreamAutoLink ??
+      DEFAULT_CONFIG.workstreamAutoLink,
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }
