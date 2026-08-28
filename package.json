@@ -29,6 +29,7 @@
     "bin",
     "src",
     "skills",
+    "docs",
     ".agent-review.example.json",
     "README.md",
     "LICENSE"
