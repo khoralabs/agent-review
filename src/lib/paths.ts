@@ -30,6 +30,9 @@ export const WORKSTREAM_ADR_FILENAME = "adr.md";
 /** Per-workstream todo-md file. */
 export const WORKSTREAM_TODO_FILENAME = "todo.md";
 
+/** Per-workstream retrospective (required before done unless --force). */
+export const WORKSTREAM_RETRO_FILENAME = "retro.md";
+
 /** Append-only work-log under a workstream or remediation. */
 export const WORK_LOG_FILENAME = "work-log.jsonl";
 

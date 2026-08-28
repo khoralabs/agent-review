@@ -169,6 +169,7 @@ describe("workstreams", () => {
       cwd: dir,
       outputDir: dir,
       message: "shipped",
+      force: true,
     });
     expect(done.clearedActive).toBe(true);
     expect(readActiveWorkstreamId(dir)).toBeUndefined();
@@ -264,9 +265,69 @@ describe("workstreams", () => {
       outputDir: dir,
       workstreamId: started.workstreamId,
       message: "done",
+      force: true,
     });
     const lines = fs.readFileSync(path.join(dir, "workstreams.jsonl"), "utf8").trim().split("\n");
     const doneLine = JSON.parse(lines[lines.length - 1] as string) as { shortSha: string };
     expect(doneLine.shortSha).toBe("abc-def");
+  });
+
+  test("done requires non-empty retro.md unless force", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-"));
+    const started = startWorkstream({
+      cwd: dir,
+      outputDir: dir,
+      shortSha: "retro01",
+      at: new Date(Date.UTC(2026, 0, 7, 0, 0, 0)),
+    });
+
+    expect(() =>
+      doneWorkstream({
+        cwd: dir,
+        outputDir: dir,
+        workstreamId: started.workstreamId,
+      }),
+    ).toThrow(/retro\.md/);
+
+    fs.writeFileSync(path.join(started.absoluteDir, "retro.md"), "   \n", "utf8");
+    expect(() =>
+      doneWorkstream({
+        cwd: dir,
+        outputDir: dir,
+        workstreamId: started.workstreamId,
+      }),
+    ).toThrow(/retro\.md/);
+
+    const forced = doneWorkstream({
+      cwd: dir,
+      outputDir: dir,
+      workstreamId: started.workstreamId,
+      force: true,
+      message: "forced",
+    });
+    expect(forced.clearedActive).toBe(true);
+  });
+
+  test("done succeeds with non-empty retro.md", () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-"));
+    const started = startWorkstream({
+      cwd: dir,
+      outputDir: dir,
+      shortSha: "retro02",
+      at: new Date(Date.UTC(2026, 0, 8, 0, 0, 0)),
+    });
+    fs.writeFileSync(
+      path.join(started.absoluteDir, "retro.md"),
+      "# Retrospective\n\n## Closing\n\nDone looking back.\n",
+      "utf8",
+    );
+    const done = doneWorkstream({
+      cwd: dir,
+      outputDir: dir,
+      workstreamId: started.workstreamId,
+      message: "closed with retro",
+    });
+    expect(done.clearedActive).toBe(true);
+    expect(readActiveWorkstreamId(dir)).toBeUndefined();
   });
 });

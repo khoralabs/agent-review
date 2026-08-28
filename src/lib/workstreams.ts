@@ -20,6 +20,7 @@ import {
   WORK_LOG_FILENAME,
   WORKSTREAM_ADR_FILENAME,
   WORKSTREAM_COMMITS_DIRNAME,
+  WORKSTREAM_RETRO_FILENAME,
   WORKSTREAM_TODO_FILENAME,
   workstreamCommitLinkPath,
   workstreamCommitsDir,
@@ -256,6 +257,8 @@ export function doneWorkstream(input: {
   message?: string;
   agent?: string;
   at?: Date;
+  /** Skip non-empty retro.md requirement. */
+  force?: boolean;
 }): {
   workstreamId: string;
   clearedActive: boolean;
@@ -268,6 +271,20 @@ export function doneWorkstream(input: {
     workstreamId: input.workstreamId,
   });
   const resolved = resolveWorkstreamDir({ cwd: input.cwd, outputDir, workstreamId: id });
+
+  if (input.force !== true) {
+    const retroPath = path.join(resolved.absoluteDir, WORKSTREAM_RETRO_FILENAME);
+    let retroOk = false;
+    if (existsSync(retroPath)) {
+      const body = readFileSync(retroPath, "utf8").trim();
+      retroOk = body.length > 0;
+    }
+    if (!retroOk) {
+      throw new Error(
+        `workstream done requires non-empty ${WORKSTREAM_RETRO_FILENAME}; write it via the workstream/retro skill, or pass --force to skip`,
+      );
+    }
+  }
 
   const entry = appendWorkstreamWorkLog({
     cwd: input.cwd,
@@ -396,7 +413,7 @@ export function maybeLinkReviewToWorkstream(input: {
   runId: string;
   /** Explicit --workstream-id (wins over active). */
   workstreamId?: string;
-  /** Config workstreamAutoLink; ignored when workstreamId is explicit. */
+  /** Config workstreams.autoLink; ignored when workstreamId is explicit. */
   autoLink: boolean;
 }): LinkReviewToWorkstreamResult | undefined {
   try {

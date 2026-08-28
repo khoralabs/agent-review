@@ -44,9 +44,10 @@ Workstream subcommands:
   workstream link <runId> [--workstream-id <id>]
   workstream log --event … --message … [--workstream-id <id>]
   workstream done [--workstream-id <id>] [--message …]
+  workstream done --force               skip retro.md gate
 
 Options:
-  --force                   init: overwrite existing config/hook/skill
+  --force                   init: overwrite existing; workstream done: skip retro.md gate
   --run-id <id>             analyze / status (status defaults to latest)
   --remediation <id|path>   required for log (<runId>/<index> or reviews/…)
   --workstream-id <id>      workstream link/log/done; also run/review auto-link override
@@ -85,7 +86,8 @@ Env:
 
 Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
-  workstreamAutoLink  when true (default) and active-workstream is set, symlink new reviews
+  workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
+  workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
   skip    true → exit 0 for run/review/analyze/walk (not status/log/migrate/commit-message/init/workstream)
           Prefer SKIP_AGENT_REVIEW=1 for local bypass so skip is not committed.
 
@@ -313,9 +315,10 @@ async function runWorkstreamCommand(
         workstreamId: overrides.workstreamId,
         message: overrides.message,
         agent: overrides.agent,
+        force: overrides.force === true,
       });
       console.error(
-        `agent-review: workstream done ${result.workstreamId}${result.clearedActive ? " (cleared active)" : ""}`,
+        `agent-review: workstream done ${result.workstreamId}${result.clearedActive ? " (cleared active)" : ""}${overrides.force === true ? " (--force)" : ""}`,
       );
       console.log(result.workstreamId);
       return 0;
