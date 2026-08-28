@@ -7,12 +7,12 @@ description: >-
   (remediate → commit → re-review) until blocking findings are gone,
   complete-feature (same via CLI without committing), walk a git commit range,
   land scoped work groups as separate commits (commit-chunks), or catalog a
-  multi-commit workstream under workstreams/.
+  multi-commit workstream under workstreams/ (including a 4Ls retro before done).
   Use when a commit-msg hook blocks, when finishing a feature before commit,
   when working under .data/agent-review/, when drafting a commit message or
   maintaining docs, when clearing agent-review findings, when landing several
-  small commits iteratively, when starting or resuming a workstream, or when
-  evaluating a from→to commit history walk.
+  small commits iteratively, when starting or resuming a workstream, when writing
+  a workstream retrospective, or when evaluating a from→to commit history walk.
 ---
 
 # Agent-review (operator)

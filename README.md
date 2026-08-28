@@ -69,7 +69,9 @@ agent-review workstream start --title "Add workstream catalog"
 agent-review workstream resume 20260828T143000Z-abc1234
 agent-review workstream link 20260828T150000Z-abc1234
 agent-review workstream log --event note --message "Chunks planned"
+# Write workstreams/<id>/retro.md via the workstream/retro skill, then:
 agent-review workstream done
+agent-review workstream done --force   # skip retro gate
 
 # Draft a Conventional Commits message for the staged diff
 agent-review commit-message
@@ -157,7 +159,7 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 | `reviews/<YYYYMMDDTHHMMSSZ>-<shortSha>/diff.gz` | Gzipped unified diff for analyze handoff |
 | `reviews/<runId>/remediations/<index>/plan.md` | Lean remediation plan when analyst verdict is `remediate` |
 | `reviews/<runId>/remediations/<index>/work-log.jsonl` | Append-only agent progress log (`log` CLI) |
-| `workstreams/<id>/` | Opt-in workstream catalog (`chunks.json`, `adr.md`, `todo.md`, `work-log.jsonl`, `commits/` symlinks) |
+| `workstreams/<id>/` | Opt-in workstream catalog (`chunks.json`, `adr.md`, `todo.md`, `work-log.jsonl`, `retro.md`, `commits/` symlinks) |
 | `workstreams.jsonl` | One index line per workstream start/done |
 | `active-workstream` | Plain-text active workstream id (or absent) |
 | `agents/<staticHash>.json.gz` | Content-addressed **static** agent capability snapshot (write-once, gzipped). Runtime/invocation **content** is not stored (PII risk); `staticHash` / `runtimeHash` / `invocationHash` remain link metadata on runs/decisions for attribution. |
@@ -202,7 +204,9 @@ Fields:
 - `outputDir` — artifact directory (default `.data/agent-review`)
 - `analystConcurrency` — max parallel analyst triage sessions (default `4`)
 - `includeWorkstream` — when `true`, attach prior same-HEAD runs to prompts (default `false`; CLI / hook: `--include-workstream`)
-- `workstreamAutoLink` — when `true` (default) and `active-workstream` is set, symlink new reviews under that workstream’s `commits/` (never moves `reviews/`; override with `--workstream-id`)
+- `workstreams` — object:
+  - `autoCommit` — when `true`, operators land via commit-chunks; when `false` (default), complete-feature without committing (session/user override allowed)
+  - `autoLink` — when `true` (default) and `active-workstream` is set, symlink new reviews under that workstream’s `commits/` (never moves `reviews/`; override with `--workstream-id`). Legacy flat `workstreamAutoLink` still maps here.
 - `--no-emit` — CLI-only; skip writing pipeline artifacts
 
 ## Exit codes

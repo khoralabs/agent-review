@@ -19,6 +19,10 @@ wires review into those hooks, that is the user's concern on their later commit.
 For remediate → **commit** → re-review after a blocked hook, use
 [../remediate-all/SKILL.md](../remediate-all/SKILL.md).
 
+When an agent-review **workstream** is active and `workstreams.autoCommit` is
+`false` (default), prefer this skill for landing; see
+[../../workstream/SKILL.md](../../workstream/SKILL.md).
+
 ## Stop condition
 
 Stop when:

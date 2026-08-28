@@ -34,11 +34,12 @@ We will add an **opt-in `workstreams/` catalog** as a sibling of `reviews/` and
   `reviews/<runId>/` directories only).
 - Index with `workstreams.jsonl` and an `active-workstream` pointer.
 - Minimal CLI: `workstream start|resume|link|log|done`. Config
-  `workstreamAutoLink` (default true) auto-symlinks after persist when a
+  `workstreams.autoLink` (default true; legacy `workstreamAutoLink` accepted)
+  auto-symlinks after persist when a
   pointer (or `--workstream-id`) is present; link failures never fail the review.
 - Ship a `workstream` operator skill (plus scoped todo-md) via `init`. Agents
   fill ADR/chunks/todo and land work via existing commit-chunks / remediation
-  skills — no `workstream plan` command.
+  skills — no `workstream plan` command. Land mode: see [ADR 0003](./0003-workstream-land-mode.md).
 
 ## Consequences
 
@@ -62,12 +63,16 @@ We will add an **opt-in `workstreams/` catalog** as a sibling of `reviews/` and
 
 1. `workstream start` → stubs + active pointer + `workstreams.jsonl`
 2. Fill `adr.md` (Nygard) and `todo.md` (todo-md); plan `chunks.json` (kebab keys)
-3. Implement and land via commit-chunks; remediate-all / complete-feature as needed
+3. Land per [ADR 0003](./0003-workstream-land-mode.md): default `workstreams.autoCommit: false` (complete-feature); opt-in commit-chunks when true
 4. Reviews continue under `reviews/`; auto or explicit link under `commits/`
-5. `workstream log` for progress; `done` clears active; `resume` restores it
+5. `workstream log` for progress
+6. Write `retro.md` via the workstream/retro skill (Artifacts + 4Ls) — see [ADR 0002](./0002-workstream-retro.md)
+7. `done` clears active (requires non-empty `retro.md` unless `--force`); `resume` restores it
 
 ## References
 
 - Operator skill: `skills/agent-review/workstream/SKILL.md`
 - Layout: `skills/agent-review/remediation/remediation/references/layout.md`
 - [todo-md](https://github.com/todo-md/todo-md)
+- Retrospective: [ADR 0002](./0002-workstream-retro.md)
+- Land modes: [ADR 0003](./0003-workstream-land-mode.md)

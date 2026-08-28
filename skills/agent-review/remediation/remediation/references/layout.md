@@ -26,6 +26,7 @@ All paths below are relative to the **repository root** unless noted.
       adr.md                           # workstream ADR
       todo.md                          # todo-md checklist
       work-log.jsonl                   # via `workstream log`
+      retro.md                         # Artifacts + 4Ls; required before done (not on start)
       commits/
         <runId> -> ../../../reviews/<runId>   # symlink only
 ```
@@ -36,7 +37,12 @@ All paths below are relative to the **repository root** unless noted.
 **Reviews are always canonical under `reviews/`.** Workstreams are an opt-in
 overlay: they never move or rename review directories. With `workstreamAutoLink`
 (default true) and an `active-workstream` pointer (or `--workstream-id`), new
-persisted reviews get a symlink under `workstreams/<id>/commits/`.
+persisted reviews get a symlink under `workstreams/<id>/commits/`. Config key:
+`workstreams.autoLink` (legacy flat `workstreamAutoLink` still accepted).
+
+`workstream done` requires a non-empty `retro.md` unless `--force` (see
+workstream/retro skill and ADR 0002). Land mode: `workstreams.autoCommit`
+(default `false` → complete-feature; `true` → commit-chunks) — ADR 0003.
 
 With `--include-workstream`, later runs that share the same short-SHA suffix load sibling `reviews/<runId>/` folders (findings, remediations, prior diffs) as prompt context.
 

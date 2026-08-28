@@ -21,6 +21,7 @@ blocks. For clearing findings **without** committing, use
 - User asked to land several independent groups over multiple commits
 - A plan lists commit groups (skill/config first, then work chunks)
 - A workstream is active: drive from that workstream’s `chunks.json` / `todo.md`
+  when `workstreams.autoCommit` is true (or the user asked to commit)
 - After finishing one chunk, before starting the next
 
 ## Do not start
