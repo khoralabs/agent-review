@@ -24,7 +24,7 @@ matches the artifact you are writing or auditing.
 | Path | Artifact | Source |
 |------|----------|--------|
 | [readme/SKILL.md](readme/SKILL.md) | `README.md` | [Standard README spec](https://github.com/RichardLitt/standard-readme/blob/main/spec.md) |
-| [adr/SKILL.md](adr/SKILL.md) | `docs/adr/*.md` | [adr.github.io](https://adr.github.io) (Nygard template) |
+| [adr/SKILL.md](adr/SKILL.md) | `docs/adr/*.md` or workstream `adr.md` | [adr.github.io](https://adr.github.io) (Nygard template) |
 | [diataxis/SKILL.md](diataxis/SKILL.md) | docs site / pages | [diataxis.fr](https://diataxis.fr) |
 | [changelog/SKILL.md](changelog/SKILL.md) | `CHANGELOG.md` | [Keep a Changelog 1.1.0](https://keepachangelog.com/en/1.1.0/) |
 

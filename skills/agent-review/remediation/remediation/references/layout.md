@@ -5,6 +5,7 @@ All paths below are relative to the **repository root** unless noted.
 ```text
 .data/agent-review/                    # default outputDir
   reviews.jsonl                        # one index line per completed run (path relative)
+  findings.jsonl
   telemetry.jsonl                      # agent session / tool telemetry
   reviews/
     <runId>/                           # e.g. 20260811T212826Z-6237c56
@@ -17,10 +18,25 @@ All paths below are relative to the **repository root** unless noted.
           investigation.md             # optional — your notes
           changes.md                   # optional — change summary
           …
+  workstreams.jsonl                    # opt-in: one line per start/done
+  active-workstream                    # opt-in: plain text workstreamId (or absent)
+  workstreams/
+    <workstreamId>/                    # same id scheme as runId
+      chunks.json                      # planned chunks (kebab keys)
+      adr.md                           # workstream ADR
+      todo.md                          # todo-md checklist
+      work-log.jsonl                   # via `workstream log`
+      commits/
+        <runId> -> ../../../reviews/<runId>   # symlink only
 ```
 
-`<runId>` looks like `20260811T212826Z-6237c56`.  
+`<runId>` / `<workstreamId>` look like `20260811T212826Z-6237c56`.  
 `<index>` is the zero-based finding index in that run.
+
+**Reviews are always canonical under `reviews/`.** Workstreams are an opt-in
+overlay: they never move or rename review directories. With `workstreamAutoLink`
+(default true) and an `active-workstream` pointer (or `--workstream-id`), new
+persisted reviews get a symlink under `workstreams/<id>/commits/`.
 
 With `--include-workstream`, later runs that share the same short-SHA suffix load sibling `reviews/<runId>/` folders (findings, remediations, prior diffs) as prompt context.
 

@@ -30,7 +30,11 @@ For decisions needing options analysis, metadata, or longer rationale, consider
 
 ## Layout
 
-Detect an existing decision log first:
+**Workstream-scoped:** when an agent-review workstream is active (or the user
+points at `workstreams/<id>/`), write or update that directory’s **`adr.md`**
+for the workstream decision. Same Nygard sections; one file per workstream.
+
+**Project-level:** detect an existing decision log first:
 
 - `docs/adr/`
 - `doc/adr/`
@@ -38,7 +42,7 @@ Detect an existing decision log first:
 
 If none exists, create **`docs/adr/`**.
 
-File naming: **`NNNN-kebab-title.md`** (zero-padded), e.g.
+File naming for project ADRs: **`NNNN-kebab-title.md`** (zero-padded), e.g.
 `0001-use-postgres-for-events.md`.
 
 ## Status lifecycle

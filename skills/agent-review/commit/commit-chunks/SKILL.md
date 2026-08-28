@@ -20,6 +20,7 @@ blocks. For clearing findings **without** committing, use
 
 - User asked to land several independent groups over multiple commits
 - A plan lists commit groups (skill/config first, then work chunks)
+- A workstream is active: drive from that workstream’s `chunks.json` / `todo.md`
 - After finishing one chunk, before starting the next
 
 ## Do not start
@@ -27,6 +28,14 @@ blocks. For clearing findings **without** committing, use
 Do **not** implement work that cannot be proven without user intervention in a
 browser (layout, toast vs chat overlap, visual banners). Leave those items
 unchecked and skip the chunk.
+
+## Workstream source of truth
+
+When `active-workstream` is set (or the user names a workstream id), treat
+`workstreams/<id>/chunks.json` as the chunk list and check off matching items in
+`todo.md` ([workstream/todo](../../workstream/todo/SKILL.md)). Update chunk
+`status` as each lands. Log progress with
+`bunx agent-review workstream log …`.
 
 ## Stop condition
 

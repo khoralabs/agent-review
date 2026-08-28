@@ -64,6 +64,13 @@ agent-review log \
   --event note \
   --message "Root cause confirmed"
 
+# Opt-in workstream catalog (reviews stay under reviews/; commits/ are symlinks)
+agent-review workstream start --title "Add workstream catalog"
+agent-review workstream resume 20260828T143000Z-abc1234
+agent-review workstream link 20260828T150000Z-abc1234
+agent-review workstream log --event note --message "Chunks planned"
+agent-review workstream done
+
 # Draft a Conventional Commits message for the staged diff
 agent-review commit-message
 
@@ -150,6 +157,9 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 | `reviews/<YYYYMMDDTHHMMSSZ>-<shortSha>/diff.gz` | Gzipped unified diff for analyze handoff |
 | `reviews/<runId>/remediations/<index>/plan.md` | Lean remediation plan when analyst verdict is `remediate` |
 | `reviews/<runId>/remediations/<index>/work-log.jsonl` | Append-only agent progress log (`log` CLI) |
+| `workstreams/<id>/` | Opt-in workstream catalog (`chunks.json`, `adr.md`, `todo.md`, `work-log.jsonl`, `commits/` symlinks) |
+| `workstreams.jsonl` | One index line per workstream start/done |
+| `active-workstream` | Plain-text active workstream id (or absent) |
 | `agents/<staticHash>.json.gz` | Content-addressed **static** agent capability snapshot (write-once, gzipped). Runtime/invocation **content** is not stored (PII risk); `staticHash` / `runtimeHash` / `invocationHash` remain link metadata on runs/decisions for attribution. |
 | `reviews.jsonl` | One compact index line per completed run (`path` relative, includes `gitHead`) |
 | `findings.jsonl` | One index line per finding (`fingerprint`, `key`, verdict, …) |
@@ -161,7 +171,7 @@ Every run (success, blocking findings, or errors) writes under `.data/agent-revi
 
 ## Operator skill (Cursor / Claude Code)
 
-Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) with grouped sub-skills: [`remediation/`](./skills/agent-review/remediation/SKILL.md), [`commit/`](./skills/agent-review/commit/SKILL.md), [`documentation/`](./skills/agent-review/documentation/SKILL.md), [`review/`](./skills/agent-review/review/SKILL.md).
+Ship skill: [`skills/agent-review/SKILL.md`](./skills/agent-review/SKILL.md) with grouped sub-skills: [`workstream/`](./skills/agent-review/workstream/SKILL.md), [`remediation/`](./skills/agent-review/remediation/SKILL.md), [`commit/`](./skills/agent-review/commit/SKILL.md), [`documentation/`](./skills/agent-review/documentation/SKILL.md), [`review/`](./skills/agent-review/review/SKILL.md).
 
 Prefer `bunx agent-review init` (copies into `.agents/skills/agent-review`). For local development of this package you can instead symlink:
 
@@ -183,7 +193,7 @@ cp node_modules/@khoralabs/agent-review/.agent-review.example.json .agent-review
 Fields:
 
 - `model` — gateway model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
-- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
+- `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.
 - `skillsDirs` — roots to **discover** for the catalog (tier 1); typically `.agents/skills`
 - `instructions` — extra system text for review / analyze / commit-message: literal strings and/or cwd-relative paths/globs to `.md` / `.txt` files (expanded with Bun.Glob). Example: `["Prefer citing tests.", "docs/review-style.md", ".agents/instructions/**/*.txt"]`
@@ -192,6 +202,7 @@ Fields:
 - `outputDir` — artifact directory (default `.data/agent-review`)
 - `analystConcurrency` — max parallel analyst triage sessions (default `4`)
 - `includeWorkstream` — when `true`, attach prior same-HEAD runs to prompts (default `false`; CLI / hook: `--include-workstream`)
+- `workstreamAutoLink` — when `true` (default) and `active-workstream` is set, symlink new reviews under that workstream’s `commits/` (never moves `reviews/`; override with `--workstream-id`)
 - `--no-emit` — CLI-only; skip writing pipeline artifacts
 
 ## Exit codes
