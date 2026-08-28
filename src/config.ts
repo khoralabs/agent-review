@@ -11,6 +11,20 @@ export type ModelConfig = {
   commitMessage: string;
 };
 
+/** Nested workstream catalog settings under `.agent-review.json`. */
+export type WorkstreamsConfig = {
+  /**
+   * When true, operators land via commit-chunks (+ remediate-all on hook block).
+   * When false (default), land via complete-feature without committing.
+   */
+  autoCommit: boolean;
+  /**
+   * When true and `active-workstream` is set, auto-symlink new reviews under
+   * that workstream's commits/ (opt-in overlay; never moves reviews/).
+   */
+  autoLink: boolean;
+};
+
 export type AgentReviewConfig = {
   model: ModelConfig;
   skills: string[];
@@ -25,11 +39,8 @@ export type AgentReviewConfig = {
   analystConcurrency: number;
   /** Attach same-HEAD prior runs as prompt context (default off). */
   includeWorkstream: boolean;
-  /**
-   * When true and `active-workstream` is set, auto-symlink new reviews under
-   * that workstream's commits/ (opt-in overlay; never moves reviews/).
-   */
-  workstreamAutoLink: boolean;
+  /** Workstream catalog land / link settings. */
+  workstreams: WorkstreamsConfig;
   /** Skip review pipeline commands (exit 0). */
   skip: boolean;
 };
@@ -39,6 +50,11 @@ const DEFAULT_MODEL_ID = "google/gemini-3.5-flash";
 export function modelsFor(id: string): ModelConfig {
   return { review: id, analyze: id, commitMessage: id };
 }
+
+export const DEFAULT_WORKSTREAMS_CONFIG: WorkstreamsConfig = {
+  autoCommit: false,
+  autoLink: true,
+};
 
 export const DEFAULT_CONFIG: AgentReviewConfig = {
   model: modelsFor(DEFAULT_MODEL_ID),
@@ -51,7 +67,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   outputDir: DEFAULT_OUTPUT_DIR,
   analystConcurrency: 4,
   includeWorkstream: false,
-  workstreamAutoLink: true,
+  workstreams: { ...DEFAULT_WORKSTREAMS_CONFIG },
   skip: false,
 };
 
@@ -96,8 +112,8 @@ export type CliOverrides = {
   agent?: string;
   analystConcurrency?: number;
   includeWorkstream?: boolean;
-  /** Programmatic override for workstreamAutoLink (no CLI flag). */
-  workstreamAutoLink?: boolean;
+  /** Programmatic override for nested workstreams settings. */
+  workstreams?: Partial<WorkstreamsConfig>;
   /** Skip writing pipeline artifacts (CLI-only). */
   noEmit?: boolean;
   /** status: least severe severity to treat as blocking. */
@@ -207,6 +223,31 @@ export function parseModelConfig(value: unknown): ModelConfig {
   return out;
 }
 
+function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): WorkstreamsConfig {
+  if (!isRecord(value)) {
+    throw new Error("workstreams must be an object");
+  }
+  const out: WorkstreamsConfig = { ...base };
+  if (value.autoCommit !== undefined) {
+    if (typeof value.autoCommit !== "boolean") {
+      throw new Error("workstreams.autoCommit must be a boolean");
+    }
+    out.autoCommit = value.autoCommit;
+  }
+  if (value.autoLink !== undefined) {
+    if (typeof value.autoLink !== "boolean") {
+      throw new Error("workstreams.autoLink must be a boolean");
+    }
+    out.autoLink = value.autoLink;
+  }
+  for (const key of Object.keys(value)) {
+    if (key !== "autoCommit" && key !== "autoLink") {
+      throw new Error(`workstreams unknown key "${key}"; expected autoCommit, autoLink`);
+    }
+  }
+  return out;
+}
+
 export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
   if (!fs.existsSync(configPath)) {
     throw new Error(`config file not found: ${configPath}`);
@@ -254,12 +295,28 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     }
     partial.includeWorkstream = raw.includeWorkstream;
   }
+
+  let workstreams: WorkstreamsConfig | undefined;
   if (raw.workstreamAutoLink !== undefined) {
     if (typeof raw.workstreamAutoLink !== "boolean") {
       throw new Error("workstreamAutoLink must be a boolean");
     }
-    partial.workstreamAutoLink = raw.workstreamAutoLink;
+    // Legacy flat key → workstreams.autoLink (nested wins when both present)
+    workstreams = {
+      ...DEFAULT_WORKSTREAMS_CONFIG,
+      autoLink: raw.workstreamAutoLink,
+    };
   }
+  if (raw.workstreams !== undefined) {
+    workstreams = mergeWorkstreamsConfig(
+      workstreams ?? DEFAULT_WORKSTREAMS_CONFIG,
+      raw.workstreams,
+    );
+  }
+  if (workstreams !== undefined) {
+    partial.workstreams = workstreams;
+  }
+
   if (raw.skip !== undefined) {
     if (typeof raw.skip !== "boolean") {
       throw new Error("skip must be a boolean");
@@ -312,10 +369,11 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       overrides.includeWorkstream ??
       filePartial.includeWorkstream ??
       DEFAULT_CONFIG.includeWorkstream,
-    workstreamAutoLink:
-      overrides.workstreamAutoLink ??
-      filePartial.workstreamAutoLink ??
-      DEFAULT_CONFIG.workstreamAutoLink,
+    workstreams: {
+      ...DEFAULT_WORKSTREAMS_CONFIG,
+      ...filePartial.workstreams,
+      ...overrides.workstreams,
+    },
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }

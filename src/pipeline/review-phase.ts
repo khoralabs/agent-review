@@ -362,7 +362,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
           outputDir,
           runId: state.runId,
           workstreamId: input.workstreamId,
-          autoLink: input.config.workstreamAutoLink,
+          autoLink: input.config.workstreams.autoLink,
         });
         telemetryPath = obs?.telemetryPath;
         const relativePaths = [

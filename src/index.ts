@@ -18,6 +18,7 @@ export {
   type CliCommand,
   type CliOverrides,
   DEFAULT_CONFIG,
+  DEFAULT_WORKSTREAMS_CONFIG,
   loadConfigFile,
   type ModelConfig,
   modelsFor,
@@ -26,6 +27,7 @@ export {
   parseModelConfig,
   resolveConfig,
   type WorkstreamSubcommand,
+  type WorkstreamsConfig,
 } from "./config.ts";
 export {
   type AgentCapabilitySnapshot,
@@ -125,6 +127,7 @@ export {
   WORK_LOG_FILENAME,
   WORKSTREAM_ADR_FILENAME,
   WORKSTREAM_COMMITS_DIRNAME,
+  WORKSTREAM_RETRO_FILENAME,
   WORKSTREAM_TODO_FILENAME,
   WORKSTREAMS_DIRNAME,
   WORKSTREAMS_JSONL_FILENAME,

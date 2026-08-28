@@ -12,6 +12,9 @@
   "outputDir": ".data/agent-review",
   "analystConcurrency": 4,
   "includeWorkstream": false,
-  "workstreamAutoLink": true,
+  "workstreams": {
+    "autoCommit": false,
+    "autoLink": true
+  },
   "skip": false
 }

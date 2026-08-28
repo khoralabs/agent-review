@@ -162,9 +162,9 @@ describe("parseArgs / resolveConfig", () => {
     expect(review.workstreamId).toBe("ws-1");
   });
 
-  test("workstreamAutoLink defaults true and loads from config", () => {
+  test("workstreams defaults and nested/flat compat", () => {
     const defaults = resolveConfig({ cwd: "/tmp/does-not-exist-agent-review" });
-    expect(defaults.workstreamAutoLink).toBe(true);
+    expect(defaults.workstreams).toEqual({ autoCommit: false, autoLink: true });
 
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
     fs.writeFileSync(
@@ -172,11 +172,25 @@ describe("parseArgs / resolveConfig", () => {
       JSON.stringify({ workstreamAutoLink: false }),
       "utf8",
     );
-    const cfg = resolveConfig({ cwd: dir });
-    expect(cfg.workstreamAutoLink).toBe(false);
+    expect(resolveConfig({ cwd: dir }).workstreams.autoLink).toBe(false);
 
-    const overridden = resolveConfig({ cwd: dir, workstreamAutoLink: true });
-    expect(overridden.workstreamAutoLink).toBe(true);
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({
+        workstreamAutoLink: false,
+        workstreams: { autoCommit: true, autoLink: true },
+      }),
+      "utf8",
+    );
+    const nestedWins = resolveConfig({ cwd: dir });
+    expect(nestedWins.workstreams).toEqual({ autoCommit: true, autoLink: true });
+
+    const overridden = resolveConfig({
+      cwd: dir,
+      workstreams: { autoCommit: false },
+    });
+    expect(overridden.workstreams.autoCommit).toBe(false);
+    expect(overridden.workstreams.autoLink).toBe(true);
   });
 
   test("parseModelConfig accepts string and partial object", () => {
