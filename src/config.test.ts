@@ -132,6 +132,50 @@ describe("parseArgs / resolveConfig", () => {
     expect(cfg.includeWorkstream).toBe(true);
   });
 
+  test("parses workstream subcommands and --workstream-id", () => {
+    const start = parseArgs(["workstream", "start", "--title", "Feat"]);
+    expect(start.command).toBe("workstream");
+    expect(start.workstreamSubcommand).toBe("start");
+    expect(start.title).toBe("Feat");
+
+    const resume = parseArgs(["workstream", "resume", "20260101T000000Z-abc"]);
+    expect(resume.workstreamSubcommand).toBe("resume");
+    expect(resume.workstreamId).toBe("20260101T000000Z-abc");
+
+    const link = parseArgs([
+      "workstream",
+      "link",
+      "20260101T000001Z-abc",
+      "--workstream-id",
+      "20260101T000000Z-abc",
+    ]);
+    expect(link.workstreamSubcommand).toBe("link");
+    expect(link.linkRunId).toBe("20260101T000001Z-abc");
+    expect(link.workstreamId).toBe("20260101T000000Z-abc");
+
+    const log = parseArgs(["workstream", "log", "--event", "note", "--message", "hi"]);
+    expect(log.workstreamSubcommand).toBe("log");
+    expect(log.event).toBe("note");
+    expect(log.message).toBe("hi");
+
+    const review = parseArgs(["review", "--workstream-id", "ws-1"]);
+    expect(review.workstreamId).toBe("ws-1");
+  });
+
+  test("workstreamAutoLink defaults true and loads from config", () => {
+    const defaults = resolveConfig({ cwd: "/tmp/does-not-exist-agent-review" });
+    expect(defaults.workstreamAutoLink).toBe(true);
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({ workstreamAutoLink: false }),
+      "utf8",
+    );
+    const cfg = resolveConfig({ cwd: dir });
+    expect(cfg.workstreamAutoLink).toBe(false);
+  });
+
   test("parseModelConfig accepts string and partial object", () => {
     expect(parseModelConfig("acme/one")).toEqual(modelsFor("acme/one"));
     expect(parseModelConfig({ analyze: "acme/analyst" })).toEqual({

@@ -25,6 +25,11 @@ export type AgentReviewConfig = {
   analystConcurrency: number;
   /** Attach same-HEAD prior runs as prompt context (default off). */
   includeWorkstream: boolean;
+  /**
+   * When true and `active-workstream` is set, auto-symlink new reviews under
+   * that workstream's commits/ (opt-in overlay; never moves reviews/).
+   */
+  workstreamAutoLink: boolean;
   /** Skip review pipeline commands (exit 0). */
   skip: boolean;
 };
@@ -46,6 +51,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   outputDir: DEFAULT_OUTPUT_DIR,
   analystConcurrency: 4,
   includeWorkstream: false,
+  workstreamAutoLink: true,
   skip: false,
 };
 
@@ -62,7 +68,10 @@ export type CliCommand =
   | "commit-message"
   | "status"
   | "walk"
-  | "init";
+  | "init"
+  | "workstream";
+
+export type WorkstreamSubcommand = "start" | "resume" | "link" | "log" | "done";
 
 export type CliOverrides = {
   configPath?: string;
@@ -105,6 +114,14 @@ export type CliOverrides = {
   keepWorktree?: boolean;
   /** init: overwrite existing files. */
   force?: boolean;
+  /** Explicit workstream id for link / log / done / review auto-link override. */
+  workstreamId?: string;
+  /** workstream CLI subcommand. */
+  workstreamSubcommand?: WorkstreamSubcommand;
+  /** workstream link: runId to symlink. */
+  linkRunId?: string;
+  /** workstream start: optional title. */
+  title?: string;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -235,6 +252,12 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     }
     partial.includeWorkstream = raw.includeWorkstream;
   }
+  if (raw.workstreamAutoLink !== undefined) {
+    if (typeof raw.workstreamAutoLink !== "boolean") {
+      throw new Error("workstreamAutoLink must be a boolean");
+    }
+    partial.workstreamAutoLink = raw.workstreamAutoLink;
+  }
   if (raw.skip !== undefined) {
     if (typeof raw.skip !== "boolean") {
       throw new Error("skip must be a boolean");
@@ -287,6 +310,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
       overrides.includeWorkstream ??
       filePartial.includeWorkstream ??
       DEFAULT_CONFIG.includeWorkstream,
+    workstreamAutoLink: filePartial.workstreamAutoLink ?? DEFAULT_CONFIG.workstreamAutoLink,
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
 }
@@ -302,6 +326,14 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     "status",
     "walk",
     "init",
+    "workstream",
+  ]);
+  const WORKSTREAM_SUBCOMMANDS = new Set<WorkstreamSubcommand>([
+    "start",
+    "resume",
+    "link",
+    "log",
+    "done",
   ]);
   let command: CliCommand = "run";
   let start = 0;
@@ -320,6 +352,26 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
       out.help = true;
       continue;
     }
+    if (!arg.startsWith("-") && command === "workstream") {
+      if (out.workstreamSubcommand === undefined) {
+        if (!WORKSTREAM_SUBCOMMANDS.has(arg as WorkstreamSubcommand)) {
+          throw new Error(
+            `workstream subcommand must be one of: ${[...WORKSTREAM_SUBCOMMANDS].join("|")}`,
+          );
+        }
+        out.workstreamSubcommand = arg as WorkstreamSubcommand;
+        continue;
+      }
+      if (out.workstreamSubcommand === "resume" && out.workstreamId === undefined) {
+        out.workstreamId = arg;
+        continue;
+      }
+      if (out.workstreamSubcommand === "link" && out.linkRunId === undefined) {
+        out.linkRunId = arg;
+        continue;
+      }
+      throw new Error(`unexpected argument: ${arg}`);
+    }
     const next = () => {
       const value = argv[++i];
       if (value === undefined) throw new Error(`missing value for ${arg}`);
@@ -333,8 +385,8 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     else if (arg === "--from") out.from = next();
     else if (arg === "--to") out.to = next();
     else if (arg === "--message") {
-      // review: commit message; log: work-log message (disambiguated by command)
-      if (command === "log") out.message = next();
+      // review: commit message; log / workstream: work-log or start note
+      if (command === "log" || command === "workstream") out.message = next();
       else out.commitMessage = next();
     } else if (arg === "--message-file") out.commitMessageFile = next();
     else if (arg === "--model") out.model = next();
@@ -374,6 +426,8 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
     else if (arg === "--path") out.path = next();
     else if (arg === "--status") out.status = next();
     else if (arg === "--agent") out.agent = next();
+    else if (arg === "--title") out.title = next();
+    else if (arg === "--workstream-id") out.workstreamId = next();
     else if (arg === "--min-severity") {
       out.minSeverity = parseSeverity(next(), "--min-severity");
     } else if (arg === "--json") {
