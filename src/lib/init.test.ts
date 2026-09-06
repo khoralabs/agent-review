@@ -28,27 +28,45 @@ describe("runInit", () => {
     }
   });
 
-  test("writes config, hook, and operator skill copy", () => {
+  test("writes config, hook, and operator skill via skills CLI", () => {
     dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-init-"));
-    fs.mkdirSync(path.join(dir, ".husky"), { recursive: true });
-    const result = runInit({ cwd: dir });
+    const cwd = dir;
+    fs.mkdirSync(path.join(cwd, ".husky"), { recursive: true });
+    const calls: string[][] = [];
+    const runSkillsCli = (args: string[]) => {
+      calls.push([...args]);
+      const skillPath = path.join(cwd, ".agents", "skills", "agent-review");
+      if (args[0] === "remove") {
+        fs.rmSync(skillPath, { recursive: true, force: true });
+        return { exitCode: 0, stdout: "removed", stderr: "" };
+      }
+      fs.mkdirSync(skillPath, { recursive: true });
+      fs.writeFileSync(path.join(skillPath, "SKILL.md"), "# agent-review\n");
+      return { exitCode: 0, stdout: "installed", stderr: "" };
+    };
+
+    const result = runInit({ cwd, runSkillsCli });
     expect(result.configWritten).toBe(true);
     expect(result.hookWritten).toBe(true);
     expect(result.skillWritten).toBe(true);
-    expect(fs.existsSync(path.join(dir, ".agent-review.json"))).toBe(true);
-    const hookPath = path.join(dir, ".husky", "commit-msg");
+    expect(fs.existsSync(path.join(cwd, ".agent-review.json"))).toBe(true);
+    const hookPath = path.join(cwd, ".husky", "commit-msg");
     expect(fs.existsSync(hookPath)).toBe(true);
     expect(fs.statSync(hookPath).mode & 0o111).not.toBe(0);
-    expect(fs.existsSync(path.join(dir, ".agents", "skills", "agent-review", "SKILL.md"))).toBe(
+    expect(fs.existsSync(path.join(cwd, ".agents", "skills", "agent-review", "SKILL.md"))).toBe(
       true,
     );
+    expect(calls[0]?.[0]).toBe("add");
+    expect(calls[0]).toContain("--skill");
+    expect(calls[0]).toContain("agent-review");
 
-    const again = runInit({ cwd: dir });
+    const again = runInit({ cwd, runSkillsCli });
     expect(again.configWritten).toBe(false);
     expect(again.hookWritten).toBe(false);
     expect(again.skillWritten).toBe(false);
 
-    const forced = runInit({ cwd: dir, force: true });
+    const forced = runInit({ cwd, force: true, runSkillsCli });
     expect(forced.configWritten).toBe(true);
+    expect(calls.some((c) => c[0] === "remove")).toBe(true);
   });
 });

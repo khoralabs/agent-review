@@ -1,4 +1,4 @@
-import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
 import {
@@ -51,17 +51,22 @@ function defaultSkillsCliRunner(
   args: string[],
   opts: { cwd?: string; env?: NodeJS.ProcessEnv },
 ): { exitCode: number; stdout: string; stderr: string } {
-  const result = Bun.spawnSync(["bunx", "skills", ...args], {
-    cwd: opts.cwd,
-    env: opts.env ?? process.env,
-    stdout: "pipe",
-    stderr: "pipe",
-  });
-  return {
-    exitCode: result.exitCode ?? 1,
-    stdout: result.stdout.toString(),
-    stderr: result.stderr.toString(),
-  };
+  try {
+    const result = Bun.spawnSync(["bunx", "skills", ...args], {
+      cwd: opts.cwd,
+      env: opts.env ?? process.env,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
+    return {
+      exitCode: result.exitCode ?? 1,
+      stdout: result.stdout.toString(),
+      stderr: result.stderr.toString(),
+    };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { exitCode: 1, stdout: "", stderr: `failed to spawn bunx skills: ${message}` };
+  }
 }
 
 function installOperatorSkill(opts: {
@@ -84,6 +89,7 @@ function installOperatorSkill(opts: {
       console.warn(
         `skills remove exited ${remove.exitCode}: ${remove.stderr.trim() || remove.stdout.trim()}`,
       );
+      rmSync(skillPath, { recursive: true, force: true });
     }
   }
 
