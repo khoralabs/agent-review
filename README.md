@@ -222,3 +222,10 @@ Review-only exits `0` on success (findings allowed) or `2` on failure.
 ## Release
 
 Publish via GitHub Actions (`workflow_dispatch` on [`.github/workflows/release.yml`](./.github/workflows/release.yml)): choose semver + npm dist-tag. Staging script: `bun run stage-release -- <version>`.
+
+Repository secrets:
+
+| Secret | Purpose |
+| --- | --- |
+| `NPM_TOKEN` | Publish `@khoralabs/agent-review` to npm |
+| `SKILLS_REPO_TOKEN` | Fine-grained PAT with **Contents: Write** on [`khoralabs/skills`](https://github.com/khoralabs/skills); required for non-dry releases (preflight fails if unset). Publishes `skills/agent-review/` → `agent-review/` in the skills repo. |

@@ -56,6 +56,24 @@ jobs:
       - name: stage release package
         run: bun run scripts/stage-release.ts "$VERSION"
 
+      # Fail before npm publish if the skills token cannot write (avoids half-published versions).
+      - name: verify skills-repo token
+        if: ${{ inputs.dry_run == false }}
+        env:
+          GH_TOKEN: ${{ secrets.SKILLS_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::SKILLS_REPO_TOKEN is empty or unset (needed to publish skills to khoralabs/skills)"
+            exit 1
+          fi
+          push="$(gh api repos/khoralabs/skills --jq '.permissions.push // false')"
+          if [ "$push" != "true" ]; then
+            echo "::error::SKILLS_REPO_TOKEN lacks push permission on khoralabs/skills (expired, revoked, or missing contents:write)"
+            exit 1
+          fi
+          echo "SKILLS_REPO_TOKEN can push to khoralabs/skills"
+
       - name: configure npm auth
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -104,6 +122,13 @@ jobs:
           git diff --cached --quiet && echo "::warning::package.json version unchanged" && exit 0
           git commit -m "release @khoralabs/agent-review v${VERSION}"
           git push origin "HEAD:refs/heads/${{ github.ref_name }}"
+
+      # After the release commit so skill-source.json records that SHA.
+      - name: publish skills
+        if: ${{ inputs.dry_run == false }}
+        env:
+          SKILLS_REPO_TOKEN: ${{ secrets.SKILLS_REPO_TOKEN }}
+        run: bun run scripts/publish-skills.ts "$VERSION"
 
       - name: tag and push
         if: ${{ inputs.dry_run == false }}
