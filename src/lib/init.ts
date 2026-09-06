@@ -1,11 +1,20 @@
-import { chmodSync, cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 
-import { packagedExampleConfigPath, packagedOperatorSkillPath } from "./package-root.ts";
+import {
+  packagedExampleConfigPath,
+  packagedOperatorSkillPath,
+  resolvePackageRoot,
+} from "./package-root.ts";
 
 export type InitOptions = {
   cwd?: string;
   force?: boolean;
+  /** Injectable for tests. */
+  runSkillsCli?: (
+    args: string[],
+    opts: { cwd?: string; env?: NodeJS.ProcessEnv },
+  ) => { exitCode: number; stdout: string; stderr: string };
 };
 
 export type InitResult = {
@@ -38,14 +47,58 @@ function writeIfNeeded(dest: string, contents: string, force: boolean, mode?: nu
   return true;
 }
 
-function copyDirIfNeeded(src: string, dest: string, force: boolean): boolean {
-  if (existsSync(dest) && !force) return false;
-  mkdirSync(path.dirname(dest), { recursive: true });
-  if (existsSync(dest)) {
-    // force: replace tree
-    cpSync(src, dest, { recursive: true, force: true });
-  } else {
-    cpSync(src, dest, { recursive: true });
+function defaultSkillsCliRunner(
+  args: string[],
+  opts: { cwd?: string; env?: NodeJS.ProcessEnv },
+): { exitCode: number; stdout: string; stderr: string } {
+  const result = Bun.spawnSync(["bunx", "skills", ...args], {
+    cwd: opts.cwd,
+    env: opts.env ?? process.env,
+    stdout: "pipe",
+    stderr: "pipe",
+  });
+  return {
+    exitCode: result.exitCode ?? 1,
+    stdout: result.stdout.toString(),
+    stderr: result.stderr.toString(),
+  };
+}
+
+function installOperatorSkill(opts: {
+  cwd: string;
+  force: boolean;
+  runSkillsCli: NonNullable<InitOptions["runSkillsCli"]>;
+}): boolean {
+  const skillPath = path.join(opts.cwd, ".agents", "skills", "agent-review");
+  if (existsSync(skillPath) && !opts.force) return false;
+
+  const packageRoot = resolvePackageRoot();
+  const leaf = packagedOperatorSkillPath();
+  if (!existsSync(path.join(leaf, "SKILL.md"))) {
+    throw new Error(`operator skill not found at ${leaf}`);
+  }
+
+  if (opts.force && existsSync(skillPath)) {
+    const remove = opts.runSkillsCli(["remove", "agent-review", "-y"], { cwd: opts.cwd });
+    if (remove.exitCode !== 0) {
+      console.warn(
+        `skills remove exited ${remove.exitCode}: ${remove.stderr.trim() || remove.stdout.trim()}`,
+      );
+    }
+  }
+
+  const add = opts.runSkillsCli(["add", packageRoot, "--skill", "agent-review", "-y"], {
+    cwd: opts.cwd,
+  });
+  if (add.exitCode !== 0) {
+    throw new Error(
+      `bunx skills add failed (${add.exitCode}): ${add.stderr.trim() || add.stdout.trim()}`,
+    );
+  }
+  if (!existsSync(path.join(skillPath, "SKILL.md"))) {
+    throw new Error(
+      `bunx skills add reported success but ${skillPath}/SKILL.md is missing:\n${add.stdout}\n${add.stderr}`,
+    );
   }
   return true;
 }
@@ -55,6 +108,7 @@ export function runInit(options: InitOptions = {}): InitResult {
   const cwd = options.cwd ?? process.cwd();
   const force = options.force === true;
   const messages: string[] = [];
+  const runSkillsCli = options.runSkillsCli ?? defaultSkillsCliRunner;
 
   const configPath = path.join(cwd, ".agent-review.json");
   const examplePath = packagedExampleConfigPath();
@@ -96,9 +150,8 @@ export function runInit(options: InitOptions = {}): InitResult {
     messages.push("skipped husky commit-msg (no .husky/; run bunx husky then re-run init)");
   }
 
-  const skillSrc = packagedOperatorSkillPath();
   const skillPath = path.join(cwd, ".agents", "skills", "agent-review");
-  const skillWritten = copyDirIfNeeded(skillSrc, skillPath, force);
+  const skillWritten = installOperatorSkill({ cwd, force, runSkillsCli });
   messages.push(
     skillWritten
       ? `installed operator skill at ${path.relative(cwd, skillPath)}`
