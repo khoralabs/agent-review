@@ -79,10 +79,19 @@ export function gitHttpsAuthHeader(token: string): string {
   return `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`;
 }
 
-/** Strip a token from error text in case git still echoes it. */
+/** Strip a token (and its base64 auth header form) from error text. */
 export function redactSecret(text: string, secret: string): string {
   if (secret.length === 0) return text;
-  return text.split(secret).join("***");
+  let out = text.split(secret).join("***");
+  const header = gitHttpsAuthHeader(secret);
+  if (header.length > 0) {
+    out = out.split(header).join("AUTHORIZATION: basic ***");
+  }
+  const b64 = Buffer.from(`x-access-token:${secret}`).toString("base64");
+  if (b64.length > 0) {
+    out = out.split(b64).join("***");
+  }
+  return out;
 }
 
 async function commitAndPushSkillsRepo(opts: {
@@ -116,7 +125,10 @@ async function commitAndPushSkillsRepo(opts: {
         .quiet();
     if (pushResult.exitCode !== 0) {
       throw new Error(
-        `skills repo push failed: ${redactSecret(pushResult.stderr.toString().trim(), token)}`,
+        `skills repo push failed: ${redactSecret(
+          pushResult.stderr.toString().trim() || pushResult.stdout.toString().trim(),
+          token,
+        )}`,
       );
     }
   }

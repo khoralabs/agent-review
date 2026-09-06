@@ -19,6 +19,12 @@ describe("redactSecret", () => {
       "clone failed: *** in url ***",
     );
   });
+
+  test("redacts base64-encoded auth header material", () => {
+    const token = "ghp_secret_token";
+    const header = `AUTHORIZATION: basic ${Buffer.from(`x-access-token:${token}`).toString("base64")}`;
+    expect(redactSecret(`failed: ${header}`, token)).toBe("failed: AUTHORIZATION: basic ***");
+  });
 });
 
 describe("syncSkillDirectory", () => {
