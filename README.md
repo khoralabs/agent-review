@@ -228,4 +228,10 @@ Repository secrets:
 | Secret | Purpose |
 | --- | --- |
 | `NPM_TOKEN` | Publish `@khoralabs/agent-review` to npm |
-| `SKILLS_REPO_TOKEN` | Fine-grained PAT with **Contents: Write** on [`khoralabs/skills`](https://github.com/khoralabs/skills); required for non-dry releases (preflight fails if unset). Publishes `skills/agent-review/` → `agent-review/` in the skills repo. |
+| `SKILLS_REPO_TOKEN` | Fine-grained PAT with **Contents: Write** on [`khoralabs/skills`](https://github.com/khoralabs/skills). Used by the separate [`publish-skills`](./.github/workflows/publish-skills.yml) workflow (not by release). Publishes packaged `skills/agent-review/` → `skills/agent-review/` in the skills catalog. |
+
+```bash
+bunx skills add khoralabs/skills --skill agent-review -y
+# or after npm install:
+bunx agent-review init
+```

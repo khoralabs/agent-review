@@ -2,7 +2,7 @@
 /**
  * Publish canonical agent-review skills into khoralabs/skills on CLI release.
  *
- * Clones the skills repo with SKILLS_REPO_TOKEN, replaces `agent-review/` wholesale,
+ * Clones the skills repo with SKILLS_REPO_TOKEN, replaces `skills/agent-review/` wholesale,
  * writes skill-source.json, and pushes. No-ops when the token is unset.
  */
 import { cpSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 
 export const SKILLS_REPO = "khoralabs/skills";
-export const SKILL_DEST_NAME = "agent-review";
+export const SKILL_DEST_NAME = "skills/agent-review";
 export const SKILL_SOURCE_REL = "skills/agent-review";
 export const PACKAGE_NAME = "@khoralabs/agent-review";
 export const SOURCE_REPO = "khoralabs/agent-review";
