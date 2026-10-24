@@ -74,9 +74,18 @@
     "yaml": "^2.8.0",
     "zod": "^4.4.3"
   },
+  "peerDependencies": {
+    "ai-sdk-provider-claude-code": "^4.3.3"
+  },
+  "peerDependenciesMeta": {
+    "ai-sdk-provider-claude-code": {
+      "optional": true
+    }
+  },
   "devDependencies": {
     "@biomejs/biome": "^2.4.0",
     "@types/bun": "latest",
+    "ai-sdk-provider-claude-code": "4.3.3",
     "husky": "^9.1.7",
     "typescript": "^5"
   }

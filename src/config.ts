@@ -5,7 +5,12 @@ import type { HealthConfig, HealthScopeConfig } from "./health/types.ts";
 import type { DiffScope } from "./lib/git.ts";
 import { DEFAULT_OUTPUT_DIR } from "./lib/observability.ts";
 import { packagedCodeReviewSkillPath } from "./lib/package-root.ts";
-import { DEFAULT_LLM_CONFIG, type LlmConfig } from "./llm/types.ts";
+import {
+  DEFAULT_LLM_CONFIG,
+  LLM_EFFORT_LEVELS,
+  type LlmConfig,
+  type LlmEffort,
+} from "./llm/types.ts";
 import type { FindingSeverity } from "./schema/index.ts";
 
 export type { HealthConfig, HealthScopeConfig, LlmConfig };
@@ -183,6 +188,8 @@ export type CliOverrides = {
   healthScopeId?: string;
   /** LLM provider id override (gateway|openrouter|…). */
   llmProvider?: string;
+  /** LLM effort override (claude-code). */
+  llmEffort?: LlmEffort;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -300,6 +307,14 @@ function mergeWorkstreamsConfig(base: WorkstreamsConfig, value: unknown): Workst
   return out;
 }
 
+function parseLlmEffort(value: unknown, label: string): LlmEffort {
+  const effort = typeof value === "string" ? value.trim() : value;
+  if (!LLM_EFFORT_LEVELS.includes(effort as LlmEffort)) {
+    throw new Error(`${label} must be one of ${LLM_EFFORT_LEVELS.join(", ")}`);
+  }
+  return effort as LlmEffort;
+}
+
 export function mergeLlmConfig(base: LlmConfig, value: unknown): LlmConfig {
   if (!isRecord(value)) {
     throw new Error("llm must be an object");
@@ -348,10 +363,19 @@ export function mergeLlmConfig(base: LlmConfig, value: unknown): LlmConfig {
       out.headers = headers;
     }
   }
-  const allowed = new Set(["provider", "apiKeyEnv", "baseURL", "headers"]);
+  if (value.effort !== undefined) {
+    if (value.effort !== null) {
+      out.effort = parseLlmEffort(value.effort, "llm.effort");
+    } else {
+      delete out.effort;
+    }
+  }
+  const allowed = new Set(["provider", "apiKeyEnv", "baseURL", "headers", "effort"]);
   for (const key of Object.keys(value)) {
     if (!allowed.has(key)) {
-      throw new Error(`llm unknown key "${key}"; expected provider, apiKeyEnv, baseURL, headers`);
+      throw new Error(
+        `llm unknown key "${key}"; expected provider, apiKeyEnv, baseURL, headers, effort`,
+      );
     }
   }
   return out;
@@ -570,6 +594,13 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
     delete llm.headers;
     delete llm.apiKeyEnv;
   }
+  const envEffort = process.env.AGENT_REVIEW_LLM_EFFORT?.trim();
+  if (envEffort !== undefined && envEffort.length > 0) {
+    llm.effort = parseLlmEffort(envEffort, "AGENT_REVIEW_LLM_EFFORT");
+  }
+  if (overrides.llmEffort !== undefined) {
+    llm.effort = overrides.llmEffort;
+  }
 
   return {
     model,
@@ -750,6 +781,8 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
       const id = next().trim();
       if (id.length === 0) throw new Error("--provider must be a non-empty string");
       out.llmProvider = id;
+    } else if (arg === "--effort") {
+      out.llmEffort = parseLlmEffort(next(), "--effort");
     } else if (arg === "--workstream-id") out.workstreamId = next();
     else if (arg === "--min-severity") {
       out.minSeverity = parseSeverity(next(), "--min-severity");
