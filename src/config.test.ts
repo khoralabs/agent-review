@@ -339,6 +339,30 @@ describe("parseArgs / resolveConfig", () => {
     }
   });
 
+  test("llm.effort from file, AGENT_REVIEW_LLM_EFFORT, and --effort", () => {
+    expect(() => mergeLlmConfig(DEFAULT_LLM_CONFIG, { effort: "huge" })).toThrow(/llm.effort/);
+    expect(() => parseArgs(["review", "--effort", "huge"])).toThrow(/--effort/);
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({ llm: { provider: "claude-code", effort: "medium" } }),
+    );
+    expect(resolveConfig({ cwd: dir }).llm.effort).toBe("medium");
+
+    const prev = process.env.AGENT_REVIEW_LLM_EFFORT;
+    try {
+      process.env.AGENT_REVIEW_LLM_EFFORT = "high";
+      expect(resolveConfig({ cwd: dir }).llm.effort).toBe("high");
+      const args = parseArgs(["review", "--effort", "max", "--provider", "gateway"]);
+      const cfg = resolveConfig({ ...args, cwd: dir });
+      expect(cfg.llm).toEqual({ provider: "gateway", effort: "max" });
+    } finally {
+      if (prev === undefined) delete process.env.AGENT_REVIEW_LLM_EFFORT;
+      else process.env.AGENT_REVIEW_LLM_EFFORT = prev;
+    }
+  });
+
   test("AGENT_REVIEW_MODEL and SKIP_AGENT_REVIEW env overrides", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-"));
     fs.writeFileSync(

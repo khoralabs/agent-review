@@ -81,7 +81,8 @@ Options:
   --skills path,path        skill dirs to activate (tier 2; default: packaged code-review)
   --skills-dirs path,path   discovery roots for catalog (tier 1)
   --model <id>              override all agents for this invocation
-  --provider <id>           llm provider: gateway|openrouter|openai|anthropic|openai-compatible
+  --provider <id>           llm provider: gateway|openrouter|openai|anthropic|openai-compatible|claude-code
+  --effort <level>          llm effort (claude-code): low|medium|high|xhigh|max
   --output-dir <path>       default .data/agent-review (use a separate dir for walk)
   --analyst-concurrency <n> max parallel analyst sessions (default 4)
   --include-workstream      attach prior same-HEAD review/remediation context
@@ -94,11 +95,12 @@ Env:
                          required for the selected llm.provider
   AGENT_REVIEW_MODEL     optional; override all agent models for this process
   AGENT_REVIEW_LLM_PROVIDER  optional; override llm.provider
+  AGENT_REVIEW_LLM_EFFORT    optional; override llm.effort
   SKIP_AGENT_REVIEW=1    optional; skip run/review/analyze/walk (overrides config.skip)
 
 Config (.agent-review.json):
   model   string for all agents, or { review, analyze, commitMessage }
-  llm     { provider, apiKeyEnv?, baseURL?, headers? } — default provider gateway
+  llm     { provider, apiKeyEnv?, baseURL?, headers?, effort? } — default provider gateway
   workstreams.autoCommit  false (default): land via complete-feature; true: commit-chunks
   workstreams.autoLink    when true (default) and active-workstream is set, symlink new reviews
   workstreams.autoBranch  when true, start requires --branch and creates/checks out that branch first
@@ -164,6 +166,8 @@ function flagArgvFromOverrides(overrides: ParsedCliArgs): string[] {
     argv.push("--message-file", overrides.commitMessageFile);
   }
   if (overrides.model !== undefined) argv.push("--model", overrides.model);
+  if (overrides.llmProvider !== undefined) argv.push("--provider", overrides.llmProvider);
+  if (overrides.llmEffort !== undefined) argv.push("--effort", overrides.llmEffort);
   if (overrides.outputDir !== undefined) {
     argv.push("--output-dir", overrides.outputDir);
   }

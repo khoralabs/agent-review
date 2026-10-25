@@ -1,4 +1,5 @@
 import { anthropicAdapter } from "./adapters/anthropic.ts";
+import { claudeCodeAdapter } from "./adapters/claude-code.ts";
 import { gatewayAdapter } from "./adapters/gateway.ts";
 import { openaiAdapter } from "./adapters/openai.ts";
 import { openaiCompatibleAdapter } from "./adapters/openai-compatible.ts";
@@ -12,6 +13,7 @@ export function registerBuiltInAdapters(): void {
   registerAdapter(openaiAdapter);
   registerAdapter(anthropicAdapter);
   registerAdapter(openaiCompatibleAdapter);
+  registerAdapter(claudeCodeAdapter);
 }
 
 /** Ensure built-ins exist after clearAdaptersForTests or cold import of resolve. */

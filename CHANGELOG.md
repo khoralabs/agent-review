@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `claude-code` LLM provider: runs agents through Claude Code on the logged-in Claude subscription (optional peer `ai-sdk-provider-claude-code`)
+- `llm.effort` config, `--effort`, and `AGENT_REVIEW_LLM_EFFORT` (used by `claude-code`)
 - `readme` operator skill for [Standard README](https://github.com/RichardLitt/standard-readme/blob/main/spec.md) compliance
 - `adr` operator skill for Architecture Decision Records ([adr.github.io](https://adr.github.io), Nygard template)
 - `diataxis` operator skill for [Diátaxis](https://diataxis.fr) technical documentation quadrants
@@ -21,6 +23,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Grouped operator skills under `remediation/`, `commit/`, `documentation/`, and `review/` with router `SKILL.md` in each
 - Grouped documentation operator skills under `skills/agent-review/documentation/` (readme, adr, diataxis, changelog)
 - Renamed the `loop` operator skill to `remediate-all` (skill path and name)
+
+### Fixed
+
+- `run` forwards `--provider` to its `review` / `analyze` subprocesses
 
 ### Removed
 

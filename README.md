@@ -138,9 +138,11 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 ## Requirements
 
 - Bun `>=1.1`
-- LLM provider API key matching `llm.provider` (default **gateway** → `AI_GATEWAY_API_KEY`; **openrouter** → `OPENROUTER_API_KEY`; also `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`). See [`.env.example`](./.env.example) and [ADR 0006](./docs/adr/0006-llm-provider-adapters.md).
+- LLM provider API key matching `llm.provider` (default **gateway** → `AI_GATEWAY_API_KEY`; **openrouter** → `OPENROUTER_API_KEY`; also `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`; **claude-code** → no key, uses your `claude` login). See [`.env.example`](./.env.example) and [ADR 0006](./docs/adr/0006-llm-provider-adapters.md).
 - Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (CLI `--model` still wins)
 - Optional `AGENT_REVIEW_LLM_PROVIDER` — override `llm.provider` (CLI `--provider` still wins)
+- Optional `AGENT_REVIEW_LLM_EFFORT` — override `llm.effort` (CLI `--effort` still wins)
+- For `llm.provider` **claude-code**: install the optional peer `ai-sdk-provider-claude-code` and log in once with `claude` (or set `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` in CI)
 - Optional `SKIP_AGENT_REVIEW=1` — skip `run` / `review` / `analyze` / `walk` without editing tracked config (overrides `skip` in `.agent-review.json`)
 - Optional **code-health** tools on PATH (not npm deps): `cccc` (`cargo install cccc-cli`), `scc`, `lizard` — used by `agent-review health`
 
@@ -208,10 +210,12 @@ Fields:
 
 - `model` — model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Format depends on `llm.provider` (Gateway/OpenRouter: `creator/model`). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
 - `llm` — LLM token API adapter:
-  - `provider` — `gateway` (default) \| `openrouter` \| `openai` \| `anthropic` \| `openai-compatible`
+  - `provider` — `gateway` (default) \| `openrouter` \| `openai` \| `anthropic` \| `openai-compatible` \| `claude-code`
   - `apiKeyEnv` — optional env var name (adapter default if omitted)
   - `baseURL` — required for `openai-compatible`; optional override for OpenRouter/OpenAI/Anthropic
   - `headers` — optional HTTP headers (e.g. OpenRouter `HTTP-Referer` / `X-Title`)
+  - `effort` — `low` \| `medium` \| `high` \| `xhigh` \| `max`; used by `claude-code` (other providers ignore it). Overrides: CLI `--effort` → `AGENT_REVIEW_LLM_EFFORT` → config. Kept when CLI/env switches the provider
+  - `claude-code` runs reviews through Claude Code on the logged-in Claude subscription with read-only `Read` / `Grep` / `Glob` tools (no `inspectBash`). Models are Claude aliases or ids (`sonnet`, `opus`, `haiku`, `anthropic/…`); it never uses `ANTHROPIC_API_KEY`. See [ADR 0007](./docs/adr/0007-claude-code-provider.md)
   - Overrides: CLI `--provider` → `AGENT_REVIEW_LLM_PROVIDER` → config (switching provider clears file `baseURL` / `headers` / `apiKeyEnv`)
 - `skip` — when `true`, exit `0` without reviewing for `run` / `review` / `analyze` / `walk` (`status` / `log` / `migrate` / `commit-message` / `init` / `workstream` / `health` are not skipped). Prefer `SKIP_AGENT_REVIEW=1` for local bypass. Env wins over config.
 - `skills` — skill directories to **activate** (tier 2). Omit to use the packaged code-review skill.

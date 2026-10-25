@@ -73,7 +73,11 @@ export async function runReviewAgent(input: RunReviewAgentInput): Promise<RunRev
 
   const model: LanguageModel | string = input.testModel
     ? input.modelId.trim() || "test-model"
-    : resolveLanguageModel(input.modelId, input.llm ?? DEFAULT_LLM_CONFIG);
+    : resolveLanguageModel(
+        input.modelId,
+        input.llm ?? DEFAULT_LLM_CONFIG,
+        input.inspectCwd ?? input.cwd,
+      );
 
   const generated = await capabilitiesGenerateText({
     agent: defined.agent,
