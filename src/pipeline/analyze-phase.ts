@@ -166,6 +166,7 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
         runId,
         modelId: input.config.model.analyze,
         llm: input.config.llm,
+        agent: input.config.agent,
         findings,
         reviewSummary: summary,
         diff,

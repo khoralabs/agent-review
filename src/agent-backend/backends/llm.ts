@@ -35,7 +35,10 @@ export function createLlmAgentBackend(ctx: AgentBackendCreateContext): AgentBack
       await ensureAgentRegistered(defined.agent);
 
       const modelId = request.modelId?.trim() || "test-model";
-      const model = ctx.testModel === true ? modelId : resolveLanguageModel(modelId, llm);
+      const model =
+        ctx.testModel === true
+          ? modelId
+          : resolveLanguageModel(modelId, llm, request.inspectCwd ?? request.cwd);
 
       const generated = await capabilitiesGenerateText({
         agent: defined.agent,

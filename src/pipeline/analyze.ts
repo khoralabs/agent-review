@@ -1,17 +1,21 @@
-import type { RegisteredAgent, ToolPipelineHooks } from "@khoralabs/agent-capabilities";
-import type { generateText, LanguageModel } from "ai";
+import type { ToolPipelineHooks } from "@khoralabs/agent-capabilities";
+import type { generateText } from "ai";
 
-import { defineAnalystAgent, ensureAgentRegistered } from "../agents/index.ts";
+import {
+  type AgentBackend,
+  type AgentBackendConfig,
+  DEFAULT_AGENT_BACKEND_CONFIG,
+  resolveAgentBackend,
+} from "../agent-backend/index.ts";
 import type { LlmConfig } from "../config.ts";
 import { stampFindingFingerprints } from "../lib/artifacts.ts";
-import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
 import { joinSystemParts } from "../lib/instructions.ts";
 import { mapPool } from "../lib/pool.ts";
 import { renderRemediationPlanMd, writeRemediationPlan } from "../lib/remediations.ts";
 import { withRetry } from "../lib/retry.ts";
 import { logStatus } from "../lib/status.ts";
-import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
+import { DEFAULT_LLM_CONFIG } from "../llm/index.ts";
 import {
   type AnalystDecision,
   type AnalystLlmOutput,
@@ -28,6 +32,8 @@ export type AnalyzeFindingsInput = {
   runId: string;
   modelId: string;
   llm?: LlmConfig;
+  agent?: AgentBackendConfig;
+  backend?: AgentBackend;
   findings: Finding[];
   reviewSummary: string;
   diff: CollectedDiff;
@@ -93,8 +99,8 @@ async function triageOneFinding(input: {
   finding: Finding;
   index: number;
   total: number;
-  agent: RegisteredAgent;
-  model: LanguageModel | string;
+  backend: AgentBackend;
+  modelId: string;
   cwd: string;
   inspectCwd?: string;
   outputDir: string;
@@ -103,7 +109,6 @@ async function triageOneFinding(input: {
   diff: CollectedDiff;
   commitMessage?: string;
   pipelineHooks?: ToolPipelineHooks;
-  generateTextFn?: typeof generateText;
   skipArtifacts?: boolean;
   quiet?: boolean;
   workstreamContext?: string;
@@ -139,28 +144,25 @@ async function triageOneFinding(input: {
 
   try {
     const generated = await withRetry(() =>
-      capabilitiesGenerateText({
-        agent: input.agent,
-        env: { cwd: input.inspectCwd ?? input.cwd },
-        pipelineHooks: input.pipelineHooks,
+      input.backend.run({
+        role: "analyze",
         runId: `${input.runId}-analyst-${i}`,
-        model: input.model,
+        cwd: input.cwd,
+        ...(input.inspectCwd !== undefined ? { inspectCwd: input.inspectCwd } : {}),
         system: joinSystemParts(input.skillSystem, input.instructionsSystem),
         prompt,
         outputSchema: analystLlmOutputSchema,
         maxSteps: 4,
-        generateTextFn: input.generateTextFn,
+        modelId: input.modelId,
+        ...(input.pipelineHooks !== undefined ? { pipelineHooks: input.pipelineHooks } : {}),
       }),
     );
 
-    if (generated.output === null || generated.output === undefined) {
-      throw new Error(`analyst returned no structured output for finding[${i}]`);
-    }
-    const llm = analystLlmOutputSchema.parse(generated.output);
+    const llm = generated.output;
     const invocationHash = generated.link.invocationHash ?? generated.link.runtimeHash;
     const identity = {
-      agentId: input.agent.agentId,
-      agentName: input.agent.name,
+      agentId: generated.agentId,
+      agentName: generated.agentName,
       staticHash: generated.link.staticHash,
       invocationHash,
     };
@@ -184,7 +186,7 @@ async function triageOneFinding(input: {
         runId: input.runId,
         findingIndex: i,
         invocationHash,
-        agentId: input.agent.agentId,
+        agentId: generated.agentId,
         finding,
         reviewSummary: input.reviewSummary,
         llm,
@@ -229,24 +231,22 @@ export async function analyzeFindings(input: AnalyzeFindingsInput): Promise<Anal
     `analyst starting (${total} finding${total === 1 ? "" : "s"}, concurrency=${Math.min(concurrency, total)})…`,
   );
 
-  const defined = await defineAnalystAgent();
-  await ensureAgentRegistered(defined.agent);
-
-  const model: LanguageModel | string = input.testModel
-    ? input.modelId.trim() || "test-model"
-    : resolveLanguageModel(
-        input.modelId,
-        input.llm ?? DEFAULT_LLM_CONFIG,
-        input.inspectCwd ?? input.cwd,
-      );
+  const backend =
+    input.backend ??
+    resolveAgentBackend({
+      agent: input.agent ?? DEFAULT_AGENT_BACKEND_CONFIG,
+      llm: input.llm ?? DEFAULT_LLM_CONFIG,
+      ...(input.generateTextFn !== undefined ? { generateTextFn: input.generateTextFn } : {}),
+      ...(input.testModel !== undefined ? { testModel: input.testModel } : {}),
+    });
 
   const results = await mapPool(input.findings, concurrency, (finding, i) =>
     triageOneFinding({
       finding,
       index: i,
       total,
-      agent: defined.agent,
-      model,
+      backend,
+      modelId: input.modelId,
       cwd: input.cwd,
       ...(input.inspectCwd !== undefined ? { inspectCwd: input.inspectCwd } : {}),
       outputDir: input.outputDir,
@@ -255,7 +255,6 @@ export async function analyzeFindings(input: AnalyzeFindingsInput): Promise<Anal
       diff: input.diff,
       commitMessage: input.commitMessage,
       pipelineHooks: input.pipelineHooks,
-      generateTextFn: input.generateTextFn,
       skipArtifacts: input.skipArtifacts,
       quiet: input.quiet,
       workstreamContext: input.workstreamContext,

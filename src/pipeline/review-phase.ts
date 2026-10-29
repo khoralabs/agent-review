@@ -224,20 +224,23 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
 
     const testModel = input.generateTextFn !== undefined;
 
-    const previewAgent = await defineReviewAgent();
-    await ensureAgentRegistered(previewAgent.agent);
-    if (!skipObs) {
-      await writeAgentSnapshotIfAbsent(outputDir, previewAgent.agent);
-    }
-    state.agent = previewAgent.agent;
-    state.staticHash = previewAgent.staticHash;
+    const useLlmBackend = (input.config.agent?.backend ?? "llm") === "llm";
+    if (useLlmBackend) {
+      const previewAgent = await defineReviewAgent();
+      await ensureAgentRegistered(previewAgent.agent);
+      if (!skipObs) {
+        await writeAgentSnapshotIfAbsent(outputDir, previewAgent.agent);
+      }
+      state.agent = previewAgent.agent;
+      state.staticHash = previewAgent.staticHash;
 
-    if (telemetry?.sessionHooks.onStart) {
-      await telemetry.sessionHooks.onStart({
-        agent: previewAgent.agent,
-        input: sessionInput,
-      });
-      state.sessionStarted = true;
+      if (telemetry?.sessionHooks.onStart) {
+        await telemetry.sessionHooks.onStart({
+          agent: previewAgent.agent,
+          input: sessionInput,
+        });
+        state.sessionStarted = true;
+      }
     }
 
     logStatus(quiet, "review agent starting…");
@@ -251,6 +254,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       runId,
       modelId: input.config.model.review,
       llm: input.config.llm,
+      agent: input.config.agent,
       diff,
       ...(commitMessage !== undefined ? { commitMessage } : {}),
       ...(workstreamContext !== undefined ? { workstreamContext } : {}),
@@ -262,7 +266,9 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       testModel,
     });
 
-    state.agent = reviewed.agent;
+    if (reviewed.agent !== undefined) {
+      state.agent = reviewed.agent;
+    }
     state.staticHash = reviewed.staticHash;
     state.runtimeHash = reviewed.runtimeHash;
     state.invocationHash = reviewed.invocationHash;

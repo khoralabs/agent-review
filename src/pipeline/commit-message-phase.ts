@@ -75,13 +75,14 @@ export async function runCommitMessagePhase(
       runId: "commit-message",
       modelId: input.config.model.commitMessage,
       llm: input.config.llm,
+      agent: input.config.agent,
       diff,
       skillSystem: skills.system,
       ...(instructions.system.length > 0 ? { instructionsSystem: instructions.system } : {}),
       generateTextFn: input.generateTextFn,
       testModel: input.generateTextFn !== undefined,
     });
-    if (!skipObs) {
+    if (!skipObs && generated.agent !== undefined) {
       await writeAgentSnapshotIfAbsent(outputDir, generated.agent);
     }
     const commitMessage = generated.result.message.trim();

@@ -3,8 +3,10 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 
+import { DEFAULT_AGENT_BACKEND_CONFIG } from "./agent-backend/types.ts";
 import {
   loadConfigFile,
+  mergeAgentBackendConfig,
   mergeLlmConfig,
   modelsFor,
   parseArgs,
@@ -360,6 +362,54 @@ describe("parseArgs / resolveConfig", () => {
     } finally {
       if (prev === undefined) delete process.env.AGENT_REVIEW_LLM_EFFORT;
       else process.env.AGENT_REVIEW_LLM_EFFORT = prev;
+    }
+  });
+
+  test("mergeAgentBackendConfig and resolveConfig agent / --agent-backend", () => {
+    expect(resolveConfig({ cwd: "/tmp/does-not-exist-agent-review" }).agent).toEqual(
+      DEFAULT_AGENT_BACKEND_CONFIG,
+    );
+    expect(mergeAgentBackendConfig(DEFAULT_AGENT_BACKEND_CONFIG, { backend: "llm" }).backend).toBe(
+      "llm",
+    );
+    expect(() => mergeAgentBackendConfig(DEFAULT_AGENT_BACKEND_CONFIG, { backend: "cli" })).toThrow(
+      /requires agent\.cli\.command/,
+    );
+    expect(
+      mergeAgentBackendConfig(DEFAULT_AGENT_BACKEND_CONFIG, {
+        backend: "cli",
+        cli: { command: "cursor", args: ["agent", "--print"] },
+      }).cli?.command,
+    ).toBe("cursor");
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-agent-"));
+    fs.writeFileSync(
+      path.join(dir, ".agent-review.json"),
+      JSON.stringify({
+        agent: {
+          backend: "cli",
+          cli: { command: "agent", args: ["-p"], timeoutMs: 120_000 },
+        },
+      }),
+    );
+    const fromFile = resolveConfig({ cwd: dir });
+    expect(fromFile.agent.backend).toBe("cli");
+    expect(fromFile.agent.cli?.command).toBe("agent");
+    expect(fromFile.agent.cli?.timeoutMs).toBe(120_000);
+
+    const args = parseArgs(["review", "--agent-backend", "llm"]);
+    expect(args.agentBackend).toBe("llm");
+    const switched = resolveConfig({ ...args, cwd: dir });
+    expect(switched.agent.backend).toBe("llm");
+
+    const prev = process.env.AGENT_REVIEW_AGENT_BACKEND;
+    try {
+      process.env.AGENT_REVIEW_AGENT_BACKEND = "cli";
+      const envCfg = resolveConfig({ cwd: dir });
+      expect(envCfg.agent.backend).toBe("cli");
+    } finally {
+      if (prev === undefined) delete process.env.AGENT_REVIEW_AGENT_BACKEND;
+      else process.env.AGENT_REVIEW_AGENT_BACKEND = prev;
     }
   });
 

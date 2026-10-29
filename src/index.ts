@@ -1,3 +1,4 @@
+export * from "./agent-backend/index.ts";
 export {
   type AgentDefinition,
   ANALYST_AGENT_ID,
@@ -23,6 +24,7 @@ export {
   type LlmConfig,
   loadConfigFile,
   type ModelConfig,
+  mergeAgentBackendConfig,
   mergeLlmConfig,
   modelsFor,
   type ParsedCliArgs,
