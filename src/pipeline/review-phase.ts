@@ -224,23 +224,23 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
 
     const testModel = input.generateTextFn !== undefined;
 
+    // Capabilities agent is always registered for telemetry identity; snapshots
+    // only apply when the llm backend owns generation.
     const useLlmBackend = (input.config.agent?.backend ?? "llm") === "llm";
-    if (useLlmBackend) {
-      const previewAgent = await defineReviewAgent();
-      await ensureAgentRegistered(previewAgent.agent);
-      if (!skipObs) {
-        await writeAgentSnapshotIfAbsent(outputDir, previewAgent.agent);
-      }
-      state.agent = previewAgent.agent;
-      state.staticHash = previewAgent.staticHash;
+    const previewAgent = await defineReviewAgent();
+    await ensureAgentRegistered(previewAgent.agent);
+    if (useLlmBackend && !skipObs) {
+      await writeAgentSnapshotIfAbsent(outputDir, previewAgent.agent);
+    }
+    state.agent = previewAgent.agent;
+    state.staticHash = previewAgent.staticHash;
 
-      if (telemetry?.sessionHooks.onStart) {
-        await telemetry.sessionHooks.onStart({
-          agent: previewAgent.agent,
-          input: sessionInput,
-        });
-        state.sessionStarted = true;
-      }
+    if (telemetry?.sessionHooks.onStart) {
+      await telemetry.sessionHooks.onStart({
+        agent: previewAgent.agent,
+        input: sessionInput,
+      });
+      state.sessionStarted = true;
     }
 
     logStatus(quiet, "review agent starting…");
