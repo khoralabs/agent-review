@@ -138,10 +138,12 @@ On success, stdout prints the **repo-root–relative** `work-log.jsonl` path.
 ## Requirements
 
 - Bun `>=1.1`
-- LLM provider API key matching `llm.provider` (default **gateway** → `AI_GATEWAY_API_KEY`; **openrouter** → `OPENROUTER_API_KEY`; also `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`; **claude-code** → no key, uses your `claude` login). See [`.env.example`](./.env.example) and [ADR 0006](./docs/adr/0006-llm-provider-adapters.md).
-- Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (CLI `--model` still wins)
+- When `agent.backend` is **`llm`** (default): LLM provider API key matching `llm.provider` (default **gateway** → `AI_GATEWAY_API_KEY`; **openrouter** → `OPENROUTER_API_KEY`; also `OPENAI_API_KEY` / `ANTHROPIC_API_KEY`; **claude-code** → no key, uses your `claude` login). See [`.env.example`](./.env.example), [ADR 0006](./docs/adr/0006-llm-provider-adapters.md), and [ADR 0008](./docs/adr/0008-agent-backend-facade.md).
+- When `agent.backend` is **`cli`**: a configured command on PATH (Cursor / Claude / Codex / custom); no provider API key required by agent-review.
+- Optional `AGENT_REVIEW_MODEL` — override all agent models for this process (CLI `--model` still wins; llm backend only)
 - Optional `AGENT_REVIEW_LLM_PROVIDER` — override `llm.provider` (CLI `--provider` still wins)
 - Optional `AGENT_REVIEW_LLM_EFFORT` — override `llm.effort` (CLI `--effort` still wins)
+- Optional `AGENT_REVIEW_AGENT_BACKEND` — override `agent.backend` (CLI `--agent-backend` still wins)
 - For `llm.provider` **claude-code**: install the optional peer `ai-sdk-provider-claude-code` and log in once with `claude` (or set `CLAUDE_CODE_OAUTH_TOKEN` from `claude setup-token` in CI)
 - Optional `SKIP_AGENT_REVIEW=1` — skip `run` / `review` / `analyze` / `walk` without editing tracked config (overrides `skip` in `.agent-review.json`)
 - Optional **code-health** tools on PATH (not npm deps): `cccc` (`cargo install cccc-cli`), `scc`, `lizard` — used by `agent-review health`
@@ -208,8 +210,12 @@ cp node_modules/@khoralabs/agent-review/.agent-review.example.json .agent-review
 
 Fields:
 
-- `model` — model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Format depends on `llm.provider` (Gateway/OpenRouter: `creator/model`). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
-- `llm` — LLM token API adapter:
+- `model` — model id for all agents (string), or an object `{ review, analyze, commitMessage }` with optional keys (missing keys use the default). Used when `agent.backend` is `llm`. Format depends on `llm.provider` (Gateway/OpenRouter: `creator/model`). Overrides (highest wins): CLI `--model` → `AGENT_REVIEW_MODEL` → config file.
+- `agent` — which runner executes review / analyze / commit-message ([ADR 0008](./docs/adr/0008-agent-backend-facade.md)):
+  - `backend` — `llm` (default; AI SDK + token providers) \| `cli` (subprocess)
+  - `cli` — required when `backend` is `cli`: `{ command, args?, timeoutMs?, env? }`. Task text (system, prompt, JSON Schema) is written to stdin, or substitute `{{taskFile}}` in `args` for a temp file path. Stdout must be JSON matching the role schema.
+  - Overrides: CLI `--agent-backend` → `AGENT_REVIEW_AGENT_BACKEND` → config
+- `llm` — LLM token API adapter (used when `agent.backend` is `llm`):
   - `provider` — `gateway` (default) \| `openrouter` \| `openai` \| `anthropic` \| `openai-compatible` \| `claude-code`
   - `apiKeyEnv` — optional env var name (adapter default if omitted)
   - `baseURL` — required for `openai-compatible`; optional override for OpenRouter/OpenAI/Anthropic

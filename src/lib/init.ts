@@ -166,7 +166,9 @@ export function runInit(options: InitOptions = {}): InitResult {
 
   messages.push("");
   messages.push("Next steps:");
-  messages.push("  1. Add a provider key to .env (AI_GATEWAY_API_KEY or OPENROUTER_API_KEY, …)");
+  messages.push(
+    "  1. For agent.backend=llm: add a provider key to .env (AI_GATEWAY_API_KEY or OPENROUTER_API_KEY, …); for cli: set agent.cli.command",
+  );
   messages.push("  2. Optional package.json scripts:");
   messages.push('       "agent-review": "agent-review",');
   messages.push('       "review": "agent-review run --scope staged --include-workstream"');
