@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import {
   appendFileSync,
   existsSync,
@@ -5,6 +6,7 @@ import {
   mkdirSync,
   readFileSync,
   readlinkSync,
+  realpathSync,
   symlinkSync,
   unlinkSync,
   writeFileSync,
@@ -117,7 +119,54 @@ function isUnderRoot(absolutePath: string, root: string): boolean {
   return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
+/** Max parents walked from outputDir looking for a `.data` symlink (bounded). */
+const DATA_SYMLINK_WALK_MAX = 6;
+
+/**
+ * If a `.data` symlink sits between the worktree root and outputDir (the shared-
+ * workspace layout), return that worktree root. Ignores unrelated ancestor symlinks.
+ */
+function findDataSymlinkWorktreeRoot(lexicalOutputDir: string): string | undefined {
+  let current = path.resolve(lexicalOutputDir);
+  for (let i = 0; i < DATA_SYMLINK_WALK_MAX; i++) {
+    try {
+      if (path.basename(current) === ".data" && lstatSync(current).isSymbolicLink()) {
+        return path.dirname(current);
+      }
+    } catch {
+      // keep walking
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return undefined;
+    current = parent;
+  }
+  return undefined;
+}
+
+function worktreeActivePointerPath(outputDir: string): string | undefined {
+  try {
+    const lexical = path.resolve(outputDir);
+    if (!existsSync(lexical)) return undefined;
+    const real = realpathSync(lexical);
+    if (real === lexical) return undefined;
+    const wtRoot = findDataSymlinkWorktreeRoot(lexical);
+    if (wtRoot === undefined) return undefined;
+    const wtName = path.basename(wtRoot).replace(/[^a-zA-Z0-9._-]/g, "_");
+    if (!wtName || wtName === "." || wtName === "..") return undefined;
+    const digest = createHash("sha256").update(wtRoot).digest("hex").slice(0, 8);
+    return path.join(outputDir, `.active-workstream.${wtName}.${digest}`);
+  } catch {
+    return undefined;
+  }
+}
+
 export function readActiveWorkstreamId(outputDir: string): string | undefined {
+  const wtPointer = worktreeActivePointerPath(outputDir);
+  if (wtPointer !== undefined) {
+    if (!existsSync(wtPointer)) return undefined;
+    const raw = readFileSync(wtPointer, "utf8").trim();
+    return raw.length > 0 ? raw : undefined;
+  }
   const pointer = activeWorkstreamPath(outputDir);
   if (!existsSync(pointer)) return undefined;
   const raw = readFileSync(pointer, "utf8").trim();
@@ -126,14 +175,27 @@ export function readActiveWorkstreamId(outputDir: string): string | undefined {
 
 export function writeActiveWorkstreamId(outputDir: string, workstreamId: string): void {
   mkdirSync(outputDir, { recursive: true });
+  const wtPointer = worktreeActivePointerPath(outputDir);
+  if (wtPointer !== undefined) {
+    writeFileSync(wtPointer, `${workstreamId}\n`, "utf8");
+    return;
+  }
   writeFileSync(activeWorkstreamPath(outputDir), `${workstreamId}\n`, "utf8");
 }
 
 export function clearActiveWorkstreamId(outputDir: string, onlyIf?: string): boolean {
+  const wtPointer = worktreeActivePointerPath(outputDir);
+  if (wtPointer !== undefined) {
+    if (!existsSync(wtPointer)) return false;
+    const currentWt = readFileSync(wtPointer, "utf8").trim();
+    if (onlyIf !== undefined && currentWt !== onlyIf) return false;
+    unlinkSync(wtPointer);
+    return true;
+  }
   const pointer = activeWorkstreamPath(outputDir);
   if (!existsSync(pointer)) return false;
-  const current = readActiveWorkstreamId(outputDir);
-  if (onlyIf !== undefined && current !== onlyIf) return false;
+  const currentGlobal = readFileSync(pointer, "utf8").trim();
+  if (onlyIf !== undefined && currentGlobal !== onlyIf) return false;
   unlinkSync(pointer);
   return true;
 }

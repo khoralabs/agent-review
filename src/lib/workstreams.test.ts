@@ -12,6 +12,7 @@ import {
   readActiveWorkstreamId,
   resumeWorkstream,
   startWorkstream,
+  writeActiveWorkstreamId,
 } from "./workstreams.ts";
 
 function makeReview(dir: string, runId: string): string {
@@ -345,5 +346,104 @@ describe("workstreams", () => {
     });
     expect(done.clearedActive).toBe(true);
     expect(readActiveWorkstreamId(dir)).toBeUndefined();
+  });
+
+  test("isolates active pointer per worktree when outputDir is shared via symlink", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-shared-"));
+    const shared = path.join(root, ".data", "agent-review");
+    fs.mkdirSync(shared, { recursive: true });
+
+    const wtA = path.join(root, "worktree-a");
+    const wtB = path.join(root, "worktree-b");
+    fs.mkdirSync(wtA, { recursive: true });
+    fs.mkdirSync(wtB, { recursive: true });
+    fs.symlinkSync("../.data", path.join(wtA, ".data"), "dir");
+    fs.symlinkSync("../.data", path.join(wtB, ".data"), "dir");
+
+    const outA = path.join(wtA, ".data", "agent-review");
+    const outB = path.join(wtB, ".data", "agent-review");
+
+    writeActiveWorkstreamId(outA, "ws-a");
+    writeActiveWorkstreamId(outB, "ws-b");
+
+    expect(readActiveWorkstreamId(outA)).toBe("ws-a");
+    expect(readActiveWorkstreamId(outB)).toBe("ws-b");
+    const pointers = fs.readdirSync(shared).filter((n) => n.startsWith(".active-workstream."));
+    expect(pointers.some((n) => n.includes("worktree-a"))).toBe(true);
+    expect(pointers.some((n) => n.includes("worktree-b"))).toBe(true);
+
+    expect(clearActiveWorkstreamId(outB, "ws-b")).toBe(true);
+    expect(readActiveWorkstreamId(outB)).toBeUndefined();
+    expect(readActiveWorkstreamId(outA)).toBe("ws-a");
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("does not fall back to global pointer on cleared symlinked worktree", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-nofallback-"));
+    fs.mkdirSync(path.join(root, ".data", "agent-review"), { recursive: true });
+    const wtA = path.join(root, "alpha");
+    const wtB = path.join(root, "beta");
+    fs.mkdirSync(wtA, { recursive: true });
+    fs.mkdirSync(wtB, { recursive: true });
+    fs.symlinkSync("../.data", path.join(wtA, ".data"), "dir");
+    fs.symlinkSync("../.data", path.join(wtB, ".data"), "dir");
+    const outA = path.join(wtA, ".data", "agent-review");
+    const outB = path.join(wtB, ".data", "agent-review");
+
+    writeActiveWorkstreamId(outA, "ws-a");
+    writeActiveWorkstreamId(outB, "ws-b");
+    expect(clearActiveWorkstreamId(outA, "ws-a")).toBe(true);
+    expect(readActiveWorkstreamId(outA)).toBeUndefined();
+    expect(readActiveWorkstreamId(outB)).toBe("ws-b");
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("isolates pointers for deep outputDir and identical worktree basenames", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-deep-"));
+    fs.mkdirSync(path.join(root, ".data", "custom", "agent-review"), { recursive: true });
+
+    const left = path.join(root, "left", "repo");
+    const right = path.join(root, "right", "repo");
+    fs.mkdirSync(left, { recursive: true });
+    fs.mkdirSync(right, { recursive: true });
+    fs.symlinkSync(path.join("..", "..", ".data"), path.join(left, ".data"), "dir");
+    fs.symlinkSync(path.join("..", "..", ".data"), path.join(right, ".data"), "dir");
+
+    const outLeft = path.join(left, ".data", "custom", "agent-review");
+    const outRight = path.join(right, ".data", "custom", "agent-review");
+    writeActiveWorkstreamId(outLeft, "ws-left");
+    writeActiveWorkstreamId(outRight, "ws-right");
+
+    expect(readActiveWorkstreamId(outLeft)).toBe("ws-left");
+    expect(readActiveWorkstreamId(outRight)).toBe("ws-right");
+    const pointers = fs
+      .readdirSync(path.join(root, ".data", "custom", "agent-review"))
+      .filter((n) => n.startsWith(".active-workstream."));
+    expect(pointers.length).toBe(2);
+    expect(
+      fs.existsSync(path.join(root, ".data", "custom", "agent-review", "active-workstream")),
+    ).toBe(false);
+
+    fs.rmSync(root, { recursive: true, force: true });
+  });
+
+  test("ignores ancestor symlinks that are not a .data link under the worktree", () => {
+    const outer = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-ws-outer-"));
+    const realRoot = path.join(outer, "real");
+    const linkRoot = path.join(outer, "link");
+    fs.mkdirSync(realRoot, { recursive: true });
+    fs.symlinkSync(realRoot, linkRoot, "dir");
+    const out = path.join(linkRoot, ".data", "agent-review");
+    fs.mkdirSync(out, { recursive: true });
+
+    writeActiveWorkstreamId(out, "ws-main");
+    expect(readActiveWorkstreamId(out)).toBe("ws-main");
+    expect(fs.existsSync(path.join(out, "active-workstream"))).toBe(true);
+    const wtPointers = fs.readdirSync(out).filter((n) => n.startsWith(".active-workstream."));
+    expect(wtPointers).toEqual([]);
+
+    fs.rmSync(outer, { recursive: true, force: true });
   });
 });
