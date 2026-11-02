@@ -544,9 +544,21 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
   return partial;
 }
 
+function findDefaultConfigPath(cwd: string): string {
+  let current = path.resolve(cwd);
+  while (true) {
+    const candidate = path.join(current, ".agent-review.json");
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(current);
+    if (parent === current) break;
+    current = parent;
+  }
+  return path.join(cwd, ".agent-review.json");
+}
+
 export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
   const cwd = overrides.cwd ?? process.cwd();
-  const configPath = overrides.configPath ?? path.join(cwd, ".agent-review.json");
+  const configPath = overrides.configPath ?? findDefaultConfigPath(cwd);
 
   let filePartial: Partial<AgentReviewConfig> = {};
   if (fs.existsSync(configPath)) {

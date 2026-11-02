@@ -111,6 +111,26 @@ describe("parseArgs / resolveConfig", () => {
     expect(cfg.instructions).toEqual([]);
   });
 
+  test("resolveConfig walks parent directories for .agent-review.json", () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), "agent-review-cfg-walk-"));
+    const child = path.join(root, "worktree-a");
+    fs.mkdirSync(child, { recursive: true });
+    fs.writeFileSync(
+      path.join(root, ".agent-review.json"),
+      JSON.stringify({ analystConcurrency: 7, defaultScope: "working" }),
+      "utf8",
+    );
+    const cfg = resolveConfig({ cwd: child });
+    expect(cfg.analystConcurrency).toBe(7);
+    expect(cfg.defaultScope).toBe("working");
+
+    const explicit = resolveConfig({
+      cwd: child,
+      configPath: path.join(child, "missing.json"),
+    });
+    expect(explicit.analystConcurrency).toBe(4);
+  });
+
   test("parses --analyst-concurrency", () => {
     const args = parseArgs(["analyze", "--run-id", "x", "--analyst-concurrency", "8"]);
     expect(args.analystConcurrency).toBe(8);

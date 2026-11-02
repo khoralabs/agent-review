@@ -1,4 +1,12 @@
-import { mkdirSync, openSync } from "node:fs";
+import {
+  existsSync,
+  lstatSync,
+  mkdirSync,
+  openSync,
+  realpathSync,
+  statSync,
+  symlinkSync,
+} from "node:fs";
 import path from "node:path";
 import type { AgentTelemetry } from "@khoralabs/agent-capabilities-otel";
 import { createAgentTelemetry } from "@khoralabs/agent-capabilities-otel";
@@ -15,9 +23,81 @@ export type ReviewObservability = {
   telemetry: AgentTelemetry;
 };
 
+/**
+ * If `<cwd>/../.data` exists (or `<cwd>/.data` is not created yet in a sibling worktree
+ * under a shared workspace that has `../.data`), ensure `<cwd>/.data` symlinks to `../.data`
+ * so repo-relative paths stay `.data/agent-review/...` while sharing the parent `.data`.
+ */
+function ensureWorkspaceSharedDataLink(cwd: string): void {
+  try {
+    const resolvedCwd = path.resolve(cwd);
+    const localData = path.join(resolvedCwd, ".data");
+    const parentData = path.join(path.dirname(resolvedCwd), ".data");
+    if (
+      resolvedCwd !== path.dirname(resolvedCwd) &&
+      isDirectory(parentData) &&
+      !lstatExists(localData)
+    ) {
+      symlinkSync("../.data", localData, "dir");
+    }
+  } catch {
+    // Best-effort
+  }
+}
+
+function isDirectory(p: string): boolean {
+  try {
+    return statSync(p).isDirectory();
+  } catch {
+    return false;
+  }
+}
+
+function lstatExists(p: string): boolean {
+  try {
+    lstatSync(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Realpath existing ancestors so missing leaf dirs still compare equal across a symlink. */
+function resolveExisting(p: string): string {
+  let current = path.resolve(p);
+  const missing: string[] = [];
+  while (true) {
+    try {
+      if (existsSync(current)) {
+        return missing.length === 0
+          ? realpathSync(current)
+          : path.join(realpathSync(current), ...missing.reverse());
+      }
+    } catch {
+      // fall through
+    }
+    const parent = path.dirname(current);
+    if (parent === current) return path.resolve(p);
+    missing.push(path.basename(current));
+    current = parent;
+  }
+}
+
 export function resolveOutputDir(cwd: string, outputDir?: string): string {
+  ensureWorkspaceSharedDataLink(cwd);
   const raw = outputDir?.trim() || DEFAULT_OUTPUT_DIR;
-  return path.isAbsolute(raw) ? raw : path.resolve(cwd, raw);
+  if (path.isAbsolute(raw)) {
+    const localDefault = path.resolve(cwd, DEFAULT_OUTPUT_DIR);
+    try {
+      if (resolveExisting(localDefault) === resolveExisting(raw)) {
+        return localDefault;
+      }
+    } catch {
+      // ignore
+    }
+    return raw;
+  }
+  return path.resolve(cwd, raw);
 }
 
 /**
