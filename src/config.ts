@@ -1,5 +1,10 @@
 import fs from "node:fs";
 import path from "node:path";
+import {
+  type AgentBackendConfig,
+  type CliAgentBackendConfig,
+  DEFAULT_AGENT_BACKEND_CONFIG,
+} from "./agent-backend/types.ts";
 import { DEFAULT_EXCLUDE_DIR_NAMES } from "./health/scopes.ts";
 import type { HealthConfig, HealthScopeConfig } from "./health/types.ts";
 import type { DiffScope } from "./lib/git.ts";
@@ -13,8 +18,14 @@ import {
 } from "./llm/types.ts";
 import type { FindingSeverity } from "./schema/index.ts";
 
-export type { HealthConfig, HealthScopeConfig, LlmConfig };
-export { DEFAULT_LLM_CONFIG };
+export type {
+  AgentBackendConfig,
+  CliAgentBackendConfig,
+  HealthConfig,
+  HealthScopeConfig,
+  LlmConfig,
+};
+export { DEFAULT_AGENT_BACKEND_CONFIG, DEFAULT_LLM_CONFIG };
 
 export type ModelConfig = {
   review: string;
@@ -59,7 +70,9 @@ export type AgentReviewConfig = {
   workstreams: WorkstreamsConfig;
   /** Code-health metrics (cccc / scc / lizard). */
   health: HealthConfig;
-  /** LLM token API provider (gateway default). */
+  /** Agent runner backend (`llm` reference or `cli` subprocess). */
+  agent: AgentBackendConfig;
+  /** LLM token API provider (gateway default; used when agent.backend is llm). */
   llm: LlmConfig;
   /** Skip review pipeline commands (exit 0). */
   skip: boolean;
@@ -104,6 +117,7 @@ export const DEFAULT_CONFIG: AgentReviewConfig = {
   includeWorkstream: false,
   workstreams: { ...DEFAULT_WORKSTREAMS_CONFIG },
   health: { ...DEFAULT_HEALTH_CONFIG, scopes: { ...DEFAULT_HEALTH_CONFIG.scopes } },
+  agent: { ...DEFAULT_AGENT_BACKEND_CONFIG },
   llm: { ...DEFAULT_LLM_CONFIG },
   skip: false,
 };
@@ -190,6 +204,8 @@ export type CliOverrides = {
   llmProvider?: string;
   /** LLM effort override (claude-code). */
   llmEffort?: LlmEffort;
+  /** Agent backend id override (llm|cli). */
+  agentBackend?: string;
 };
 
 export type ParsedCliArgs = CliOverrides & {
@@ -313,6 +329,101 @@ function parseLlmEffort(value: unknown, label: string): LlmEffort {
     throw new Error(`${label} must be one of ${LLM_EFFORT_LEVELS.join(", ")}`);
   }
   return effort as LlmEffort;
+}
+
+export function mergeCliAgentBackendConfig(
+  base: CliAgentBackendConfig | undefined,
+  value: unknown,
+): CliAgentBackendConfig {
+  if (!isRecord(value)) {
+    throw new Error("agent.cli must be an object");
+  }
+  const out: CliAgentBackendConfig = base !== undefined ? { ...base } : { command: "" };
+  if (value.command !== undefined) {
+    if (typeof value.command !== "string" || value.command.trim().length === 0) {
+      throw new Error("agent.cli.command must be a non-empty string");
+    }
+    out.command = value.command.trim();
+  }
+  if (value.args !== undefined) {
+    if (value.args === null) {
+      delete out.args;
+    } else {
+      out.args = parseStringArray(value.args, "agent.cli.args");
+    }
+  }
+  if (value.timeoutMs !== undefined) {
+    if (value.timeoutMs === null) {
+      delete out.timeoutMs;
+    } else {
+      out.timeoutMs = parsePositiveInt(value.timeoutMs, "agent.cli.timeoutMs");
+    }
+  }
+  if (value.env !== undefined) {
+    if (value.env === null) {
+      delete out.env;
+    } else {
+      if (!isRecord(value.env)) {
+        throw new Error("agent.cli.env must be an object");
+      }
+      const env: Record<string, string> = {};
+      for (const [k, v] of Object.entries(value.env)) {
+        if (typeof v !== "string") {
+          throw new Error(`agent.cli.env.${k} must be a string`);
+        }
+        env[k] = v;
+      }
+      out.env = env;
+    }
+  }
+  const allowed = new Set(["command", "args", "timeoutMs", "env"]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error(`agent.cli unknown key "${key}"; expected command, args, timeoutMs, env`);
+    }
+  }
+  if (out.command.trim().length === 0) {
+    throw new Error("agent.cli.command must be a non-empty string");
+  }
+  return out;
+}
+
+export function mergeAgentBackendConfig(
+  base: AgentBackendConfig,
+  value: unknown,
+): AgentBackendConfig {
+  if (!isRecord(value)) {
+    throw new Error("agent must be an object");
+  }
+  const out: AgentBackendConfig = {
+    ...base,
+    ...(base.cli !== undefined ? { cli: { ...base.cli } } : {}),
+  };
+  if (value.backend !== undefined) {
+    if (typeof value.backend !== "string" || value.backend.trim().length === 0) {
+      throw new Error("agent.backend must be a non-empty string");
+    }
+    out.backend = value.backend.trim();
+  }
+  if (value.cli !== undefined) {
+    if (value.cli === null) {
+      delete out.cli;
+    } else {
+      out.cli = mergeCliAgentBackendConfig(out.cli, value.cli);
+    }
+  }
+  const allowed = new Set(["backend", "cli"]);
+  for (const key of Object.keys(value)) {
+    if (!allowed.has(key)) {
+      throw new Error(`agent unknown key "${key}"; expected backend, cli`);
+    }
+  }
+  if (out.backend === "cli") {
+    if (out.cli === undefined || out.cli.command.trim().length === 0) {
+      throw new Error('agent.backend "cli" requires agent.cli.command');
+    }
+  }
+  return out;
 }
 
 export function mergeLlmConfig(base: LlmConfig, value: unknown): LlmConfig {
@@ -531,6 +642,10 @@ export function loadConfigFile(configPath: string): Partial<AgentReviewConfig> {
     partial.health = mergeHealthConfig(DEFAULT_HEALTH_CONFIG, raw.health);
   }
 
+  if (raw.agent !== undefined) {
+    partial.agent = mergeAgentBackendConfig(DEFAULT_AGENT_BACKEND_CONFIG, raw.agent);
+  }
+
   if (raw.llm !== undefined) {
     partial.llm = mergeLlmConfig(DEFAULT_LLM_CONFIG, raw.llm);
   }
@@ -602,6 +717,26 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
     llm.effort = overrides.llmEffort;
   }
 
+  const fileAgent = filePartial.agent ?? DEFAULT_AGENT_BACKEND_CONFIG;
+  const agent: AgentBackendConfig = {
+    ...DEFAULT_AGENT_BACKEND_CONFIG,
+    ...fileAgent,
+    ...(fileAgent.cli !== undefined ? { cli: { ...fileAgent.cli } } : {}),
+  };
+  const envAgentBackend = process.env.AGENT_REVIEW_AGENT_BACKEND?.trim();
+  const cliAgentBackend = overrides.agentBackend?.trim();
+  if (envAgentBackend !== undefined && envAgentBackend.length > 0) {
+    agent.backend = envAgentBackend;
+  }
+  if (cliAgentBackend !== undefined && cliAgentBackend.length > 0) {
+    agent.backend = cliAgentBackend;
+  }
+  if (agent.backend === "cli") {
+    if (agent.cli === undefined || agent.cli.command.trim().length === 0) {
+      throw new Error('agent.backend "cli" requires agent.cli.command');
+    }
+  }
+
   return {
     model,
     skills: overrides.skills ?? filePartial.skills ?? DEFAULT_CONFIG.skills,
@@ -634,6 +769,7 @@ export function resolveConfig(overrides: CliOverrides = {}): AgentReviewConfig {
           ...DEFAULT_HEALTH_CONFIG,
           scopes: { ...DEFAULT_HEALTH_CONFIG.scopes },
         },
+    agent,
     llm,
     skip: envSkip || (filePartial.skip ?? DEFAULT_CONFIG.skip),
   };
@@ -783,6 +919,10 @@ export function parseArgs(argv: string[]): ParsedCliArgs {
       out.llmProvider = id;
     } else if (arg === "--effort") {
       out.llmEffort = parseLlmEffort(next(), "--effort");
+    } else if (arg === "--agent-backend") {
+      const id = next().trim();
+      if (id.length === 0) throw new Error("--agent-backend must be a non-empty string");
+      out.agentBackend = id;
     } else if (arg === "--workstream-id") out.workstreamId = next();
     else if (arg === "--min-severity") {
       out.minSeverity = parseSeverity(next(), "--min-severity");

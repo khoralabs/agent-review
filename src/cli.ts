@@ -83,6 +83,7 @@ Options:
   --model <id>              override all agents for this invocation
   --provider <id>           llm provider: gateway|openrouter|openai|anthropic|openai-compatible|claude-code
   --effort <level>          llm effort (claude-code): low|medium|high|xhigh|max
+  --agent-backend <id>      agent runner: llm (default) | cli
   --output-dir <path>       default .data/agent-review (use a separate dir for walk)
   --analyst-concurrency <n> max parallel analyst sessions (default 4)
   --include-workstream      attach prior same-HEAD review/remediation context

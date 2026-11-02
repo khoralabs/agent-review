@@ -224,9 +224,12 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
 
     const testModel = input.generateTextFn !== undefined;
 
+    // Capabilities agent is always registered for telemetry identity; snapshots
+    // only apply when the llm backend owns generation.
+    const useLlmBackend = (input.config.agent?.backend ?? "llm") === "llm";
     const previewAgent = await defineReviewAgent();
     await ensureAgentRegistered(previewAgent.agent);
-    if (!skipObs) {
+    if (useLlmBackend && !skipObs) {
       await writeAgentSnapshotIfAbsent(outputDir, previewAgent.agent);
     }
     state.agent = previewAgent.agent;
@@ -251,6 +254,7 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       runId,
       modelId: input.config.model.review,
       llm: input.config.llm,
+      agent: input.config.agent,
       diff,
       ...(commitMessage !== undefined ? { commitMessage } : {}),
       ...(workstreamContext !== undefined ? { workstreamContext } : {}),
@@ -262,7 +266,9 @@ export async function runReviewPhase(input: RunReviewPhaseInput): Promise<RunRev
       testModel,
     });
 
-    state.agent = reviewed.agent;
+    if (reviewed.agent !== undefined) {
+      state.agent = reviewed.agent;
+    }
     state.staticHash = reviewed.staticHash;
     state.runtimeHash = reviewed.runtimeHash;
     state.invocationHash = reviewed.invocationHash;

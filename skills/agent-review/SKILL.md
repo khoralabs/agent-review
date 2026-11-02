@@ -32,8 +32,9 @@ read-only; you implement fixes (and commit only when using remediate-all).
 
 ## CLI map
 
-From the repo root (LLM provider key required except `log` / `status` /
-`migrate` / `init` / `workstream` / `health` — see `llm.provider`):
+From the repo root (when `agent.backend` is `llm`, provider key required except
+`log` / `status` / `migrate` / `init` / `workstream` / `health` — see
+`llm.provider`; `cli` backend needs `agent.cli.command` instead):
 
 | Command | Purpose |
 |---------|---------|

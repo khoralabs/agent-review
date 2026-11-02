@@ -105,9 +105,12 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
   logStatus(quiet, `analyze ${runId} started`);
 
   try {
+    // Capabilities agent is always registered for telemetry identity; snapshots
+    // only apply when the llm backend owns generation.
+    const useLlmBackend = (input.config.agent?.backend ?? "llm") === "llm";
     const defined = await defineAnalystAgent();
     await ensureAgentRegistered(defined.agent);
-    if (!skipObs) {
+    if (useLlmBackend && !skipObs) {
       await writeAgentSnapshotIfAbsent(outputDir, defined.agent);
     }
     agent = defined.agent;
@@ -166,6 +169,7 @@ export async function runAnalyzePhase(input: RunAnalyzePhaseInput): Promise<RunA
         runId,
         modelId: input.config.model.analyze,
         llm: input.config.llm,
+        agent: input.config.agent,
         findings,
         reviewSummary: summary,
         diff,

@@ -1,11 +1,15 @@
 import type { ToolPipelineHooks } from "@khoralabs/agent-capabilities";
-import type { generateText, LanguageModel } from "ai";
+import type { generateText } from "ai";
 
-import { defineReviewAgent, ensureAgentRegistered } from "../agents/index.ts";
+import {
+  type AgentBackend,
+  type AgentBackendConfig,
+  DEFAULT_AGENT_BACKEND_CONFIG,
+  resolveAgentBackend,
+} from "../agent-backend/index.ts";
 import type { LlmConfig } from "../config.ts";
-import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
-import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
+import { DEFAULT_LLM_CONFIG } from "../llm/index.ts";
 import { type ReviewResult, reviewResultSchema } from "../schema/index.ts";
 import { formatSkillSystem, type SkillRecord } from "../skills/index.ts";
 
@@ -16,6 +20,9 @@ export type RunReviewAgentInput = {
   runId: string;
   modelId: string;
   llm?: LlmConfig;
+  agent?: AgentBackendConfig;
+  /** Injected backend (tests); skips resolveAgentBackend. */
+  backend?: AgentBackend;
   diff: CollectedDiff;
   commitMessage?: string;
   discoveredSkills: SkillRecord[];
@@ -34,13 +41,12 @@ export type RunReviewAgentResult = {
   staticHash: string;
   runtimeHash: string;
   invocationHash?: string;
-  agent: Awaited<ReturnType<typeof defineReviewAgent>>["agent"];
+  agentId: string;
+  agentName: string;
+  agent?: Awaited<ReturnType<typeof import("../agents/index.ts").defineReviewAgent>>["agent"];
 };
 
 export async function runReviewAgent(input: RunReviewAgentInput): Promise<RunReviewAgentResult> {
-  const defined = await defineReviewAgent();
-  await ensureAgentRegistered(defined.agent);
-
   const system = [
     formatSkillSystem(input.discoveredSkills, input.activatedSkills),
     input.instructionsSystem ?? "",
@@ -71,35 +77,34 @@ export async function runReviewAgent(input: RunReviewAgentInput): Promise<RunRev
     .filter((part): part is string => part !== null)
     .join("\n");
 
-  const model: LanguageModel | string = input.testModel
-    ? input.modelId.trim() || "test-model"
-    : resolveLanguageModel(
-        input.modelId,
-        input.llm ?? DEFAULT_LLM_CONFIG,
-        input.inspectCwd ?? input.cwd,
-      );
+  const backend =
+    input.backend ??
+    resolveAgentBackend({
+      agent: input.agent ?? DEFAULT_AGENT_BACKEND_CONFIG,
+      llm: input.llm ?? DEFAULT_LLM_CONFIG,
+      ...(input.generateTextFn !== undefined ? { generateTextFn: input.generateTextFn } : {}),
+      ...(input.testModel !== undefined ? { testModel: input.testModel } : {}),
+    });
 
-  const generated = await capabilitiesGenerateText({
-    agent: defined.agent,
-    env: { cwd: input.inspectCwd ?? input.cwd },
-    pipelineHooks: input.pipelineHooks,
+  const generated = await backend.run({
+    role: "review",
     runId: input.runId,
-    model,
+    cwd: input.cwd,
+    ...(input.inspectCwd !== undefined ? { inspectCwd: input.inspectCwd } : {}),
     system,
     prompt,
     outputSchema: reviewResultSchema,
-    generateTextFn: input.generateTextFn,
+    modelId: input.modelId,
+    ...(input.pipelineHooks !== undefined ? { pipelineHooks: input.pipelineHooks } : {}),
   });
 
-  if (generated.output === null || generated.output === undefined) {
-    throw new Error("model returned no structured output");
-  }
-  const result = reviewResultSchema.parse(generated.output);
   return {
-    result,
+    result: generated.output,
     staticHash: generated.link.staticHash,
     runtimeHash: generated.link.runtimeHash,
     invocationHash: generated.link.invocationHash,
-    agent: defined.agent,
+    agentId: generated.agentId,
+    agentName: generated.agentName,
+    ...(generated.agent !== undefined ? { agent: generated.agent } : {}),
   };
 }

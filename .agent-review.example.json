@@ -17,6 +17,9 @@
     "autoLink": true,
     "autoBranch": false
   },
+  "agent": {
+    "backend": "llm"
+  },
   "llm": {
     "provider": "gateway"
   },

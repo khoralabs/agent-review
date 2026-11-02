@@ -1,12 +1,16 @@
 import type { ToolPipelineHooks } from "@khoralabs/agent-capabilities";
-import type { generateText, LanguageModel } from "ai";
+import type { generateText } from "ai";
 
-import { defineCommitMessageAgent, ensureAgentRegistered } from "../agents/index.ts";
+import {
+  type AgentBackend,
+  type AgentBackendConfig,
+  DEFAULT_AGENT_BACKEND_CONFIG,
+  resolveAgentBackend,
+} from "../agent-backend/index.ts";
 import type { LlmConfig } from "../config.ts";
-import { capabilitiesGenerateText } from "../lib/capabilities-generate.ts";
 import type { CollectedDiff } from "../lib/git.ts";
 import { joinSystemParts } from "../lib/instructions.ts";
-import { DEFAULT_LLM_CONFIG, resolveLanguageModel } from "../llm/index.ts";
+import { DEFAULT_LLM_CONFIG } from "../llm/index.ts";
 import { type CommitMessageOutput, commitMessageOutputSchema } from "../schema/index.ts";
 
 export type RunCommitMessageAgentInput = {
@@ -14,6 +18,8 @@ export type RunCommitMessageAgentInput = {
   runId: string;
   modelId: string;
   llm?: LlmConfig;
+  agent?: AgentBackendConfig;
+  backend?: AgentBackend;
   diff: CollectedDiff;
   skillSystem: string;
   /** Formatted custom instructions from config. */
@@ -28,15 +34,16 @@ export type RunCommitMessageAgentResult = {
   staticHash: string;
   runtimeHash: string;
   invocationHash?: string;
-  agent: Awaited<ReturnType<typeof defineCommitMessageAgent>>["agent"];
+  agentId: string;
+  agentName: string;
+  agent?: Awaited<
+    ReturnType<typeof import("../agents/index.ts").defineCommitMessageAgent>
+  >["agent"];
 };
 
 export async function runCommitMessageAgent(
   input: RunCommitMessageAgentInput,
 ): Promise<RunCommitMessageAgentResult> {
-  const defined = await defineCommitMessageAgent();
-  await ensureAgentRegistered(defined.agent);
-
   const fileList =
     input.diff.files.length > 0
       ? input.diff.files.map((f) => `- ${f}`).join("\n")
@@ -55,31 +62,33 @@ export async function runCommitMessageAgent(
     .filter((part): part is string => part !== null)
     .join("\n");
 
-  const model: LanguageModel | string = input.testModel
-    ? input.modelId.trim() || "test-model"
-    : resolveLanguageModel(input.modelId, input.llm ?? DEFAULT_LLM_CONFIG);
+  const backend =
+    input.backend ??
+    resolveAgentBackend({
+      agent: input.agent ?? DEFAULT_AGENT_BACKEND_CONFIG,
+      llm: input.llm ?? DEFAULT_LLM_CONFIG,
+      ...(input.generateTextFn !== undefined ? { generateTextFn: input.generateTextFn } : {}),
+      ...(input.testModel !== undefined ? { testModel: input.testModel } : {}),
+    });
 
-  const generated = await capabilitiesGenerateText({
-    agent: defined.agent,
-    env: { cwd: input.cwd },
-    pipelineHooks: input.pipelineHooks,
+  const generated = await backend.run({
+    role: "commitMessage",
     runId: input.runId,
-    model,
+    cwd: input.cwd,
     system: joinSystemParts(input.skillSystem, input.instructionsSystem),
     prompt,
     outputSchema: commitMessageOutputSchema,
-    generateTextFn: input.generateTextFn,
+    modelId: input.modelId,
+    ...(input.pipelineHooks !== undefined ? { pipelineHooks: input.pipelineHooks } : {}),
   });
 
-  if (generated.output === null || generated.output === undefined) {
-    throw new Error("model returned no structured output");
-  }
-  const result = commitMessageOutputSchema.parse(generated.output);
   return {
-    result,
+    result: generated.output,
     staticHash: generated.link.staticHash,
     runtimeHash: generated.link.runtimeHash,
     invocationHash: generated.link.invocationHash,
-    agent: defined.agent,
+    agentId: generated.agentId,
+    agentName: generated.agentName,
+    ...(generated.agent !== undefined ? { agent: generated.agent } : {}),
   };
 }
